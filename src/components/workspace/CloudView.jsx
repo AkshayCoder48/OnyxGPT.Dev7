@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, HardDrive, Network, Cpu, Terminal as TerminalIcon, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Database, HardDrive, Network, Cpu, Terminal as TerminalIcon, Plus, RefreshCw, Trash2, X, Check } from 'lucide-react';
 
 export default function CloudView() {
   const [subTab, setSubTab] = useState('kv');
@@ -7,6 +7,8 @@ export default function CloudView() {
   const [files, setFiles] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isAddingKV, setIsAddingKV] = useState(false);
+  const [newKV, setNewKV] = useState({ key: '', value: '' });
 
   const fetchData = async () => {
     if (!window.puter) return;
@@ -38,6 +40,29 @@ export default function CloudView() {
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, [subTab]);
+
+  const handleAddKV = async () => {
+    if (!newKV.key) return;
+    try {
+      await window.puter.kv.set(newKV.key, newKV.value);
+      setNewKV({ key: '', value: '' });
+      setIsAddingKV(false);
+      fetchData();
+    } catch (err) {
+      alert('Error adding KV: ' + err.message);
+    }
+  };
+
+  const handleDeleteKV = async (key) => {
+    if (window.confirm(`Are you sure you want to delete key: ${key}?`)) {
+      try {
+        await window.puter.kv.del(key);
+        fetchData();
+      } catch (err) {
+        alert('Error deleting KV: ' + err.message);
+      }
+    }
+  };
 
   return (
     <div className="flex h-full bg-background">
@@ -81,39 +106,77 @@ export default function CloudView() {
              </div>
           </div>
 
-          <button className="flex items-center space-x-2 px-3 py-1.5 bg-primary/10 border border-primary/20 text-primary rounded-md text-xs hover:bg-primary/20 transition-all">
-             <Plus size={14} />
-             <span>New Entry</span>
-          </button>
+          {subTab === 'kv' && (
+            <button
+              onClick={() => setIsAddingKV(true)}
+              className="flex items-center space-x-2 px-3 py-1.5 bg-primary/10 border border-primary/20 text-primary rounded-md text-xs hover:bg-primary/20 transition-all"
+            >
+              <Plus size={14} />
+              <span>New Entry</span>
+            </button>
+          )}
         </header>
 
         <div className="flex-1 p-6 overflow-y-auto">
           {subTab === 'kv' && (
-            <div className="digital-glow bg-surface rounded-xl border border-gray-800 overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-background/80 text-gray-500 text-[10px] uppercase font-bold tracking-wider border-b border-gray-800">
-                  <tr>
-                    <th className="px-6 py-4">Key</th>
-                    <th className="px-6 py-4">Value</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800 text-sm">
-                  {kvData.length > 0 ? kvData.map((entry, i) => (
-                    <tr key={i} className="group hover:bg-primary/5 transition-colors">
-                      <td className="px-6 py-4 font-mono text-primary">{entry.key}</td>
-                      <td className="px-6 py-4 font-mono text-gray-300 truncate max-w-md">{entry.value}</td>
-                      <td className="px-6 py-4 text-right">
-                         <button className="p-1 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Trash2 size={14} />
-                         </button>
-                      </td>
+            <div className="space-y-4">
+              {isAddingKV && (
+                <div className="p-4 bg-surface border border-primary/50 rounded-xl flex items-center space-x-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex-1 grid grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Key"
+                      className="bg-background border border-gray-700 rounded px-3 py-1.5 text-xs font-mono focus:border-primary outline-none"
+                      value={newKV.key}
+                      onChange={e => setNewKV({...newKV, key: e.target.value})}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Value"
+                      className="bg-background border border-gray-700 rounded px-3 py-1.5 text-xs font-mono focus:border-primary outline-none"
+                      value={newKV.value}
+                      onChange={e => setNewKV({...newKV, value: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button onClick={handleAddKV} className="p-1.5 bg-primary text-background rounded hover:brightness-110">
+                      <Check size={14} />
+                    </button>
+                    <button onClick={() => setIsAddingKV(false)} className="p-1.5 bg-gray-800 text-gray-400 rounded hover:text-white">
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="digital-glow bg-surface rounded-xl border border-gray-800 overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-background/80 text-gray-500 text-[10px] uppercase font-bold tracking-wider border-b border-gray-800">
+                    <tr>
+                      <th className="px-6 py-4">Key</th>
+                      <th className="px-6 py-4">Value</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
-                  )) : (
-                    <tr><td colSpan="3" className="px-6 py-20 text-center text-gray-600 italic">No Key-Value entries found</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800 text-sm">
+                    {kvData.length > 0 ? kvData.map((entry, i) => (
+                      <tr key={i} className="group hover:bg-primary/5 transition-colors">
+                        <td className="px-6 py-4 font-mono text-primary">{entry.key}</td>
+                        <td className="px-6 py-4 font-mono text-gray-300 truncate max-w-md">{entry.value}</td>
+                        <td className="px-6 py-4 text-right">
+                           <button
+                            onClick={() => handleDeleteKV(entry.key)}
+                            className="p-1 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                           >
+                              <Trash2 size={14} />
+                           </button>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan="3" className="px-6 py-20 text-center text-gray-600 italic">No Key-Value entries found</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

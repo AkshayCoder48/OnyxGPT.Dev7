@@ -6,7 +6,7 @@ import SettingsModal from '../components/workspace/SettingsModal';
 import { LogOut, Settings, Cloud as CloudIcon, Terminal as TerminalIcon, Monitor } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
-import { saveMessage, getProjectMessages } from '../services/supabase';
+import { saveMessage, getProjectMessages } from '../services/storage';
 import { getWebContainer } from '../services/webContainer';
 
 export default function WorkspacePage({ user, signIn, signOut }) {
@@ -47,14 +47,12 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   // Load existing messages
   useEffect(() => {
     const loadData = async () => {
-      const { data } = await getProjectMessages(code);
-      if (data && data.length > 0) {
-        setMessages(data.map(m => ({
-          role: m.role,
-          content: m.content,
-          toolCalls: m.tool_calls
-        })));
-        hasInitialized.current = true;
+      if (code) {
+        const data = await getProjectMessages(code);
+        if (data && data.length > 0) {
+          setMessages(data);
+          hasInitialized.current = true;
+        }
       }
     };
     loadData();
@@ -78,7 +76,9 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
 
-    await saveMessage({ project_id: code, role: 'user', content });
+    await saveMessage(code, userMsg);
+
+    let finalAssistantMsg = null;
 
     try {
       await chatWithAI(
@@ -94,11 +94,16 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         },
         async (updatedAssistantMsg) => {
           setMessages([...newMessages, updatedAssistantMsg]);
+          finalAssistantMsg = updatedAssistantMsg;
         },
         (log) => {
           setLogs(prev => [...prev, typeof log === 'string' ? log : JSON.stringify(log)]);
         }
       );
+
+      if (finalAssistantMsg) {
+        await saveMessage(code, finalAssistantMsg);
+      }
     } catch (err) {
       setLogs(prev => [...prev, `Error: ${err.message}`]);
     } finally {
