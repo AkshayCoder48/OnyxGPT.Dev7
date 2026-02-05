@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #121212;
+  --color-surface: #202020;
+  --color-primary: #00E4CC;
+
+  --font-sans: "Manrope", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: white;
+    font-family: var(--font-sans);
+  }
+}
+
+.digital-glow {
+  box-shadow: 0 0 15px rgba(0, 228, 204, 0.3);
+  border: 1px solid rgba(0, 228, 204, 0.2);
+}
