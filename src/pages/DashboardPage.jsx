@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getProjects, saveProject, saveGitHubToken, getGitHubToken } from '../services/storage';
-import { generateRandomName } from '../utils/names';
 import * as github from '../services/githubService';
+import { generateRandomName } from '../utils/names';
 import {
   Plus,
   Search,
@@ -19,17 +19,19 @@ import {
   Grid,
   ExternalLink,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, signIn, signOut } = useAuth();
+  const { user, signIn, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [activeTab, setActiveTab] = useState('projects');
   const [searchQuery, setSearchQuery] = useState('');
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
   const [ghUser, setGhUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const templates = [
     { id: 'react-basic', name: 'React Basic', description: 'Vite + React + Tailwind', icon: '⚛️' },
@@ -39,14 +41,29 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      loadProjects();
-      checkGitHub();
+      loadInitialData();
+    } else if (!authLoading) {
+      setLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
+
+  const loadInitialData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadProjects(),
+        checkGitHub()
+      ]);
+    } catch (err) {
+      console.error('Failed to load dashboard data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadProjects = async () => {
     const data = await getProjects();
-    setProjects(data);
+    setProjects(Array.isArray(data) ? data : []);
   };
 
   const checkGitHub = async () => {
@@ -57,7 +74,7 @@ export default function DashboardPage() {
         setGhUser(user);
         setIsGitHubConnected(true);
       } catch (err) {
-        console.error('GitHub token invalid', err);
+        console.error('GitHub token invalid or API error', err);
         setIsGitHubConnected(false);
       }
     }
@@ -87,8 +104,21 @@ export default function DashboardPage() {
   const handleDeleteProject = async (id) => {
     const updated = projects.filter(p => p.id !== id);
     setProjects(updated);
-    await window.puter.kv.set('onyx_projects', JSON.stringify(updated));
+    if (window.puter) {
+      await window.puter.kv.set('onyx_projects', JSON.stringify(updated));
+    }
   };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="w-12 h-12 text-primary animate-spin" />
+          <p className="text-gray-500 font-mono text-sm">Loading Environment...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -106,6 +136,10 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const filteredProjects = projects.filter(p =>
+    p?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-background flex text-white font-sans">
@@ -184,7 +218,7 @@ export default function DashboardPage() {
         <div className="flex-1 overflow-y-auto p-8">
           {activeTab === 'projects' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {projects.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(project => (
+              {filteredProjects.map(project => (
                 <ProjectCard
                   key={project.id}
                   project={project}
@@ -192,7 +226,7 @@ export default function DashboardPage() {
                   onClick={() => navigate(`/workspace/${project.id}`)}
                 />
               ))}
-              {projects.length === 0 && (
+              {filteredProjects.length === 0 && (
                 <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-800 rounded-3xl">
                   <Folder size={48} className="mx-auto text-gray-700 mb-4" />
                   <p className="text-gray-500">No projects found. Create your first one!</p>
@@ -226,7 +260,7 @@ export default function DashboardPage() {
               {isGitHubConnected ? (
                 <div className="space-y-6">
                    <div className="flex items-center justify-center space-x-3">
-                      <img src={ghUser?.avatar_url} className="w-12 h-12 rounded-full border-2 border-primary" alt="GH Avatar" />
+                      {ghUser?.avatar_url && <img src={ghUser.avatar_url} className="w-12 h-12 rounded-full border-2 border-primary" alt="GH Avatar" />}
                       <div className="text-left">
                         <div className="flex items-center space-x-2 text-green-500 font-bold text-xl">
                           <CheckCircle2 size={24} />
@@ -314,9 +348,9 @@ function ProjectCard({ project, onClick, onDelete }) {
       </div>
       <div className="p-4 flex items-center justify-between">
         <div>
-          <h3 className="font-bold truncate w-40">{project.name}</h3>
+          <h3 className="font-bold truncate w-40">{project?.name || 'Untitled'}</h3>
           <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase tracking-tighter">
-            Updated {new Date(project.updatedAt || project.createdAt).toLocaleDateString()}
+            Updated {new Date(project?.updatedAt || project?.createdAt || Date.now()).toLocaleDateString()}
           </p>
         </div>
         <div className="relative">

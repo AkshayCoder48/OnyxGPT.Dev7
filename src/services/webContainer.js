@@ -10,10 +10,18 @@ export async function getWebContainer() {
   }
 
   if (window.__WEBCONTAINER_PROMISE__) {
-    return window.__WEBCONTAINER_PROMISE__;
+    try {
+      return await window.__WEBCONTAINER_PROMISE__;
+    } catch (e) {
+      window.__WEBCONTAINER_PROMISE__ = null;
+    }
   }
 
   console.log("ONYX: Initializing WebContainer boot sequence...");
+
+  if (!window.crossOriginIsolated) {
+    console.error("ONYX: Environment is NOT cross-origin isolated. WebContainer will fail.");
+  }
 
   window.__WEBCONTAINER_PROMISE__ = (async () => {
     try {
@@ -27,15 +35,13 @@ export async function getWebContainer() {
 
       if (isAlreadyBooted) {
         console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        // This is a tricky state. We don't have the instance, but we can't boot a new one.
-        // In most cases, this happens because of a hot reload where the previous instance
-        // wasn't correctly stored in the window object.
-
-        // We throw a more helpful error
-        throw new Error("WebContainer is already running in another part of the application. Please refresh the page to sync.");
+        throw new Error("WebContainer is already running. Please refresh the page to sync state.");
       }
 
-      // Clear the promise so we can retry on next call if it was a transient error
+      if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
+        throw new Error("Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. WebContainer requires these to be set on the server.");
+      }
+
       window.__WEBCONTAINER_PROMISE__ = null;
       throw err;
     }
