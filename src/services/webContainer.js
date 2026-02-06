@@ -25,6 +25,9 @@ export async function getWebContainer() {
 
   window.__WEBCONTAINER_PROMISE__ = (async () => {
     try {
+      // Small delay to prevent race conditions in fast HMR
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const instance = await WebContainer.boot();
       window.__WEBCONTAINER_INSTANCE__ = instance;
       console.log("ONYX: WebContainer booted successfully.");
@@ -35,11 +38,14 @@ export async function getWebContainer() {
 
       if (isAlreadyBooted) {
         console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        throw new Error("WebContainer is already running. Please refresh the page to sync state.");
+        // We can't easily capture the existing instance if we lost the reference,
+        // but we can try to return what we have if it appeared in window meanwhile.
+        if (window.__WEBCONTAINER_INSTANCE__) return window.__WEBCONTAINER_INSTANCE__;
+        throw new Error("Unable to create more instances. WebContainer is restricted to one instance per tab. Please refresh.");
       }
 
       if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
-        throw new Error("Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. WebContainer requires these to be set on the server.");
+        throw new Error("SharedArrayBuffer Error: Cross-Origin Isolation (COOP/COEP) headers are missing. This IDE requires a secure environment.");
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;

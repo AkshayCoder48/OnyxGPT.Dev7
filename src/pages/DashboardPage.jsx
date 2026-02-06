@@ -37,6 +37,8 @@ export default function DashboardPage() {
     { id: 'react-basic', name: 'React Basic', description: 'Vite + React + Tailwind', icon: '⚛️' },
     { id: 'nextjs-starter', name: 'Next.js Starter', description: 'Next.js + Tailwind', icon: '▲' },
     { id: 'node-api', name: 'Node.js API', description: 'Express + Puter KV', icon: '🟢' },
+    { id: 'dashboard-ui', name: 'Modern Dashboard', description: 'React + Recharts + Tailwind', icon: '📊' },
+    { id: 'landing-page', name: 'SaaS Landing Page', description: 'React + Framer Motion', icon: '🚀' },
   ];
 
   useEffect(() => {
@@ -98,7 +100,7 @@ export default function DashboardPage() {
       updatedAt: new Date().toISOString(),
     };
     await saveProject(newProject);
-    navigate(`/workspace/${id}`);
+    navigate(`/workspace/${id}`, { state: { initialPrompt: template ? `I'm starting a new ${template.name} project. Please initialize the basic boilerplate.` : '' } });
   };
 
   const handleDeleteProject = async (id) => {
@@ -111,10 +113,17 @@ export default function DashboardPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-12 h-12 text-primary animate-spin" />
-          <p className="text-gray-500 font-mono text-sm">Loading Environment...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-primary/5 blur-[120px] rounded-full animate-pulse"></div>
+        <div className="flex flex-col items-center space-y-6 z-10">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-xl border-2 border-primary/20 border-t-primary animate-spin"></div>
+            <Terminal className="absolute inset-0 m-auto text-primary w-6 h-6 animate-pulse" />
+          </div>
+          <div className="text-center">
+            <p className="text-white font-display font-bold text-lg tracking-widest uppercase">Initializing Onyx</p>
+            <p className="text-gray-500 font-mono text-xs mt-2">Connecting to Puter Cloud...</p>
+          </div>
         </div>
       </div>
     );
@@ -142,9 +151,16 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background flex text-white font-sans">
+    <div className="min-h-screen bg-background flex text-white font-sans relative overflow-hidden">
+      {/* Fancy Background Effects */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-0 opacity-20">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full"></div>
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+      </div>
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-800 bg-surface flex flex-col shrink-0">
+      <aside className="w-64 border-r border-gray-800 bg-surface/80 backdrop-blur-xl flex flex-col shrink-0 z-10">
         <div className="p-6 flex items-center space-x-3 mb-4">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-background font-bold">O</div>
           <span className="font-display font-bold text-xl">Onyx<span className="text-primary">GPT</span></span>
@@ -172,7 +188,7 @@ export default function DashboardPage() {
         </nav>
 
         <div className="p-4 border-t border-gray-800 mt-auto">
-          <div className="flex items-center space-x-3 p-2 bg-background rounded-xl border border-gray-800">
+          <div className="flex items-center space-x-3 p-2 bg-background/50 rounded-xl border border-gray-800">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
               {user.username?.substring(0, 2).toUpperCase()}
             </div>
@@ -180,14 +196,13 @@ export default function DashboardPage() {
               <div className="text-xs font-bold truncate">{user.username}</div>
               <button onClick={signOut} className="text-[10px] text-gray-500 hover:text-red-400 transition-colors">Sign Out</button>
             </div>
-            <SettingsIcon size={14} className="text-gray-500 cursor-pointer hover:text-white" />
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-surface/50 backdrop-blur-md sticky top-0 z-10">
+      <main className="flex-1 flex flex-col overflow-hidden z-10">
+        <header className="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-surface/30 backdrop-blur-md sticky top-0 z-10">
           <h2 className="font-display font-bold text-xl uppercase tracking-widest text-gray-400">
             {activeTab === 'projects' && 'Your Projects'}
             {activeTab === 'templates' && 'Starter Templates'}
@@ -337,18 +352,39 @@ function SidebarButton({ active, onClick, icon, label }) {
 
 function ProjectCard({ project, onClick, onDelete }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [isPinned, setIsPinned] = useState(project.isPinned || false);
+
+  const handleExport = (e) => {
+    e.stopPropagation();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `${project.name || 'project'}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    setShowMenu(false);
+  };
+
+  const togglePin = (e) => {
+    e.stopPropagation();
+    setIsPinned(!isPinned);
+    // Ideally we'd save this to Puter KV here too
+    setShowMenu(false);
+  };
 
   return (
     <div
-      className="bg-surface border border-gray-800 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all cursor-pointer relative"
+      className={`bg-surface border ${isPinned ? 'border-primary/40 shadow-[0_0_15px_rgba(0,228,204,0.1)]' : 'border-gray-800'} rounded-2xl overflow-hidden group hover:border-primary/30 transition-all cursor-pointer relative hover:translate-y-[-4px] duration-300`}
       onClick={onClick}
     >
-      <div className="h-32 bg-background/50 flex items-center justify-center">
-        <Folder size={40} className="text-gray-700 group-hover:text-primary/50 transition-colors" />
+      <div className="h-32 bg-background/50 flex items-center justify-center relative">
+        <Folder size={40} className={`${isPinned ? 'text-primary' : 'text-gray-700'} group-hover:text-primary/50 transition-colors`} />
+        {isPinned && <Pin size={14} className="absolute top-4 right-4 text-primary fill-primary" />}
       </div>
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between bg-surface">
         <div>
-          <h3 className="font-bold truncate w-40">{project?.name || 'Untitled'}</h3>
+          <h3 className="font-bold truncate w-40 text-gray-200 group-hover:text-white transition-colors">{project?.name || 'Untitled'}</h3>
           <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase tracking-tighter">
             Updated {new Date(project?.updatedAt || project?.createdAt || Date.now()).toLocaleDateString()}
           </p>
@@ -359,15 +395,15 @@ function ProjectCard({ project, onClick, onDelete }) {
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1 hover:bg-white/10 rounded-lg transition-colors text-gray-500 hover:text-white"
           >
             <MoreVertical size={16} />
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 bottom-full mb-2 w-32 bg-background border border-gray-800 rounded-xl shadow-2xl z-20 overflow-hidden">
-               <MenuButton icon={<Pin size={12} />} label="Pin" />
-               <MenuButton icon={<Download size={12} />} label="Export" />
+            <div className="absolute right-0 bottom-full mb-2 w-32 bg-background border border-gray-800 rounded-xl shadow-2xl z-20 overflow-hidden backdrop-blur-md">
+               <MenuButton icon={<Pin size={12} className={isPinned ? 'fill-primary text-primary' : ''} />} label={isPinned ? "Unpin" : "Pin"} onClick={togglePin} />
+               <MenuButton icon={<Download size={12} />} label="Export" onClick={handleExport} />
                <MenuButton
                   icon={<Trash2 size={12} />}
                   label="Delete"

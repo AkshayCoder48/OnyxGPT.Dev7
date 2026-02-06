@@ -38,7 +38,6 @@ const LandingPage = () => {
               </>
             ) : (
               <>
-                <button onClick={login} className="text-sm font-bold hover:text-primary transition-colors">Log In</button>
                 <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300">
                   Get Started
                 </button>
@@ -69,7 +68,7 @@ const LandingPage = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
               <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2">
                 Start Building for Free
-                <span className="material-symbols-outlined">arrow_forward</span>
+                <span className="material-symbols-outlined">bolt</span>
               </button>
             </div>
 

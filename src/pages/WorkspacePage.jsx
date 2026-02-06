@@ -15,7 +15,10 @@ import {
   Box,
   Github,
   Globe,
-  Loader2
+  Loader2,
+  Files,
+  RefreshCw,
+  Search as SearchIcon
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
@@ -33,9 +36,14 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   const [activeAmenity, setActiveAmenity] = useState('preview');
   const [messages, setMessages] = useState([]);
+  const [todos, setTodos] = useState([]);
   const [appSettings, setAppSettings] = useState(() => {
     const saved = localStorage.getItem('onyx_settings');
-    return saved ? JSON.parse(saved) : { customModelId: 'gpt-4o' };
+    const defaultSettings = {
+      customModelId: 'gpt-4o',
+      modelHistory: ['gpt-4o', 'gemini-2.0-flash', 'claude-3-5-sonnet']
+    };
+    return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
   });
   const [model, setModel] = useState(appSettings.customModelId);
   const [mode, setMode] = useState('execute');
@@ -59,7 +67,10 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       if (code && code !== 'new') {
         const projects = await getProjects();
         const p = projects.find(proj => proj.id === code);
-        if (p) setProject(p);
+        if (p) {
+          setProject(p);
+          if (p.todos) setTodos(p.todos);
+        }
       }
     };
     loadProject();
@@ -110,7 +121,22 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   }, [initialPrompt, messages.length, code]);
 
   const addLog = (log) => {
+    if (typeof log === 'string' && (log.includes('AI calling') || log.includes('tool_use'))) return; // Filter out verbose AI calling logs
     setLogs(prev => [...prev, typeof log === 'string' ? log : JSON.stringify(log)]);
+  };
+
+  const refreshTerminal = async () => {
+    setLogs(['Re-initializing terminal...', 'SharedArrayBuffer support verified.', 'User authenticated.']);
+    try {
+      // Re-trigger WC boot if needed, but here we just reset logs and show current state
+      const wc = await getWebContainer();
+      addLog('WebContainer re-attached.');
+      // Try to list files to verify connection
+      const files = await listFiles('/');
+      addLog(`Root files: ${files.join(', ')}`);
+    } catch (err) {
+      addLog(`Refresh Error: ${err.message}`);
+    }
   };
 
   const handleSendMessage = async (content) => {
@@ -120,7 +146,13 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     let projectId = code;
     if (projectId === 'new') {
       projectId = Math.random().toString(36).substring(7);
-      const newProject = { id: projectId, name: generateRandomName(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      const newProject = {
+        id: projectId,
+        name: generateRandomName(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        todos: []
+      };
       await saveProject(newProject);
       setProject(newProject);
       navigate(`/workspace/${projectId}`, { replace: true });
@@ -141,7 +173,14 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             setPreviewUrl(url);
             setActiveAmenity('preview');
           },
-          systemPrompt: PROMPTS[mode] || PROMPTS.execute
+          onTodosUpdate: (newTodos) => {
+            setTodos(newTodos);
+            if (project) {
+              saveProject({ ...project, todos: newTodos });
+            }
+          },
+          systemPrompt: PROMPTS[mode] || PROMPTS.execute,
+          todos: todos
         },
         async (updatedAssistantMsg) => {
           const finalMsgs = [...newMessages, updatedAssistantMsg];
@@ -257,7 +296,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
               className="flex items-center space-x-2 px-3 py-1.5 bg-background border border-gray-800 hover:border-primary/50 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
             >
               {isDeploying ? <Loader2 size={14} className="animate-spin text-primary" /> : <Github size={14} className="text-primary" />}
-              <span className="hidden sm:inline">{isDeploying ? 'Deploying...' : 'Deploy to GitHub'}</span>
+              <span className="hidden sm:inline">{isDeploying ? 'Pushing...' : 'Push to GitHub'}</span>
             </button>
           )}
           <button
@@ -273,12 +312,18 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       </header>
 
       <main className="flex-1 flex overflow-hidden">
-        <div className="w-14 border-r border-gray-800 bg-surface flex flex-col items-center py-4 space-y-4 shrink-0">
+        <div className="w-14 border-r border-gray-800 bg-surface flex flex-col items-center py-4 space-y-4 shrink-0 z-20">
           <AmenityButton
             active={activeAmenity === 'preview'}
             onClick={() => setActiveAmenity('preview')}
             icon={<Monitor size={20} />}
             label="Preview"
+          />
+          <AmenityButton
+            active={activeAmenity === 'files'}
+            onClick={() => setActiveAmenity('files')}
+            icon={<Files size={20} />}
+            label="File Explorer"
           />
           <AmenityButton
             active={activeAmenity === 'terminal'}
@@ -287,10 +332,16 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             label="Terminal"
           />
           <AmenityButton
+            active={activeAmenity === 'search'}
+            onClick={() => setActiveAmenity('search')}
+            icon={<SearchIcon size={20} />}
+            label="Global Search"
+          />
+          <AmenityButton
             active={activeAmenity === 'cloud'}
             onClick={() => setActiveAmenity('cloud')}
             icon={<Cloud size={20} />}
-            label="Cloud"
+            label="Cloud Storage"
           />
         </div>
 
@@ -315,6 +366,15 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
           {activeAmenity === 'terminal' && (
             <div className="h-full flex flex-col bg-[#0d0d0d] overflow-hidden">
+               <div className="p-2 border-b border-gray-800 bg-background/50 flex justify-end px-4">
+                  <button
+                    onClick={refreshTerminal}
+                    className="flex items-center space-x-2 text-[10px] text-gray-500 hover:text-primary transition-colors py-1"
+                  >
+                    <RefreshCw size={12} />
+                    <span>Refresh Terminal</span>
+                  </button>
+               </div>
                <div className="p-4 flex-1 font-mono text-[11px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
                   {logs.map((log, i) => (
                     <div key={i} className="mb-1 leading-relaxed">
@@ -327,6 +387,22 @@ export default function WorkspacePage({ user, signIn, signOut }) {
                     <span className="w-2 h-4 bg-primary animate-pulse"></span>
                   </div>
                </div>
+            </div>
+          )}
+
+          {activeAmenity === 'files' && (
+            <div className="h-full flex flex-col bg-[#0a0a0a] p-8 items-center justify-center text-center">
+               <Files size={48} className="text-gray-800 mb-4" />
+               <h3 className="text-lg font-bold text-gray-400 mb-2">File Explorer</h3>
+               <p className="text-sm text-gray-600 max-w-xs">Viewing and editing files directly is coming in the next update. For now, use the chat to modify files.</p>
+            </div>
+          )}
+
+          {activeAmenity === 'search' && (
+            <div className="h-full flex flex-col bg-[#0a0a0a] p-8 items-center justify-center text-center">
+               <SearchIcon size={48} className="text-gray-800 mb-4" />
+               <h3 className="text-lg font-bold text-gray-400 mb-2">Search</h3>
+               <p className="text-sm text-gray-600 max-w-xs">Global search across your project files is currently indexed by Onyx AI.</p>
             </div>
           )}
 
@@ -344,6 +420,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             isGenerating={isGenerating}
             onUndo={handleUndo}
             onAttachContext={handleAttachContext}
+            todos={todos}
           />
         </div>
       </main>

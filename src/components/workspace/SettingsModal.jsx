@@ -18,24 +18,46 @@ export default function SettingsModal({ isOpen, onClose, settings, setSettings }
         </header>
 
         <div className="p-6 space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-start space-x-2 p-3 bg-primary/5 rounded-lg border border-primary/10">
-               <Info size={14} className="text-primary mt-0.5 shrink-0" />
-               <p className="text-[11px] text-gray-400 leading-relaxed">
-                 Model configuration has been moved directly to the Chat Interface for quicker access.
-                 Use the Model ID input in the chat header to switch between different AI models.
-               </p>
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-300">AI Model ID</label>
+            <div className="relative group">
+              <input
+                type="text"
+                value={settings.customModelId}
+                onChange={(e) => setSettings({ ...settings, customModelId: e.target.value })}
+                className="w-full bg-background border border-gray-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary transition-all font-mono"
+                placeholder="e.g. gpt-4o"
+              />
             </div>
+
+            {settings.modelHistory && settings.modelHistory.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {settings.modelHistory.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setSettings({ ...settings, customModelId: m })}
+                    className={`text-[10px] px-2 py-1 rounded border transition-all ${
+                      settings.customModelId === m
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-background border-gray-800 text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-300">Tool Verbosity</label>
-            <div className="flex items-center justify-between p-3 bg-background border border-gray-800 rounded-xl">
-               <span className="text-xs text-gray-500">Show detailed tool logs in chat</span>
-               <div className="w-10 h-5 bg-primary/20 rounded-full relative cursor-not-allowed">
+          <div className="space-y-3 pt-4 border-t border-gray-800">
+            <label className="block text-sm font-medium text-gray-300">Environment</label>
+            <div className="flex items-center justify-between p-3 bg-background border border-gray-800 rounded-xl opacity-50 grayscale">
+               <span className="text-xs text-gray-500">Auto-save to Puter Cloud</span>
+               <div className="w-10 h-5 bg-primary/20 rounded-full relative">
                   <div className="absolute right-1 top-1 w-3 h-3 bg-primary rounded-full"></div>
                </div>
             </div>
+            <p className="text-[10px] text-gray-600 italic px-1">Persistence is handled automatically via Puter KV.</p>
           </div>
         </div>
 

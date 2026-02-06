@@ -1,8 +1,13 @@
 import * as wc from './webContainer';
 
-const SYSTEM_PROMPT = `You are Onyx, an autonomous AI software engineer.
-You build React + Vite applications.
-You act as an operator: you write files, install dependencies, and run servers.
+const SYSTEM_PROMPT = `You are Onyx, an autonomous, conversational, and highly skilled AI software engineer.
+You build modern React + Vite applications with a focus on clean UI and robust logic.
+
+Tone and Style:
+- Be conversational and proactive.
+- Start by greeting the user and proposing a plan with TODOs.
+- Use markdowns for clarity.
+- When you complete a task, update the project TODOs.
 
 Constraints:
 - Framework: React + Vite ONLY.
@@ -12,6 +17,7 @@ Constraints:
 Tools available:
 - writeFile(path, contents): Create or update a file in WebContainer.
 - runCommand(command, args): Run terminal commands in WebContainer.
+- updateTodos(todos): Update the project TODO list. 'todos' is an array of objects: { task: string, completed: boolean }.
 - readFile(path): Read file contents from WebContainer.
 - listFiles(path): List files in WebContainer directory.
 - kvSet(key, value): Save data to Puter.js Key-Value store.
@@ -20,10 +26,10 @@ Tools available:
 - fsRead(path): Read a file from Puter.js Cloud Filesystem.
 
 Workflow:
-1. Initialize package.json with react and vite.
-2. Install dependencies.
-3. Create src/main.jsx and src/App.jsx.
-4. Run 'npm run dev'.
+1. Propose a plan and update TODOs.
+2. Initialize package.json and project structure.
+3. Iteratively build features, updating TODOs as you go.
+4. Run 'npm run dev' to show progress.
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
@@ -103,11 +109,35 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
           required: ["path", "contents"]
         }
       }
+    },
+    {
+      type: "function",
+      function: {
+        name: "updateTodos",
+        description: "Update the project TODO list",
+        parameters: {
+          type: "object",
+          properties: {
+            todos: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  task: { type: "string" },
+                  completed: { type: "boolean" }
+                },
+                required: ["task", "completed"]
+              }
+            }
+          },
+          required: ["todos"]
+        }
+      }
     }
   ];
 
   let currentMessages = [
-    { role: "system", content: options.systemPrompt || SYSTEM_PROMPT },
+    { role: "system", content: (options.systemPrompt || SYSTEM_PROMPT) + `\nCurrent project TODOs: ${JSON.stringify(options.todos || [])}` },
     ...messages
   ];
 
@@ -178,6 +208,11 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         onLog(`onyx-app $ cloud-fs write ${args.path}`);
         await window.puter.fs.write(args.path, args.contents);
         result = "File written to Puter Cloud FS.";
+      } else if (toolCall.name === 'updateTodos') {
+        if (options.onTodosUpdate) {
+          options.onTodosUpdate(args.todos);
+        }
+        result = "TODO list updated.";
       }
     } catch (err) {
       status = 'error';

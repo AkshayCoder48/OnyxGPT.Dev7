@@ -10,7 +10,8 @@ export default function ChatPanel({
   setMode,
   isGenerating,
   onUndo,
-  onAttachContext
+  onAttachContext,
+  todos = []
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -34,20 +35,32 @@ export default function ChatPanel({
       {/* Header */}
       <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-background/20">
         <div className="flex items-center space-x-2">
-           <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(0,228,204,0.6)]"></div>
-           <h3 className="font-display font-bold text-[10px] text-gray-400 uppercase tracking-widest">Chat Interface</h3>
-        </div>
-        <div className="flex items-center bg-background border border-gray-800 rounded px-2 py-1 space-x-2 group focus-within:border-primary transition-all">
-          <Cpu size={12} className="text-gray-500 group-focus-within:text-primary" />
-          <input
-            type="text"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            placeholder="Model ID (e.g. gpt-4o)"
-            className="bg-transparent text-[10px] text-gray-300 outline-none w-32 font-mono"
-          />
+           <Sparkles size={14} className="text-primary animate-pulse" />
+           <h3 className="font-display font-bold text-[10px] text-gray-400 uppercase tracking-widest">Onyx AI Assistant</h3>
         </div>
       </div>
+
+      {/* TODOs Section */}
+      {todos && todos.length > 0 && (
+        <div className="bg-primary/5 border-b border-gray-800 p-3">
+           <div className="flex items-center space-x-2 mb-2">
+              <Check className="text-primary w-3 h-3" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Project Objectives</span>
+           </div>
+           <div className="space-y-1.5">
+              {todos.map((todo, idx) => (
+                <div key={idx} className="flex items-start space-x-2">
+                   <div className={`mt-1 w-2.5 h-2.5 rounded-sm border ${todo.completed ? 'bg-primary border-primary' : 'border-gray-600'} flex items-center justify-center`}>
+                      {todo.completed && <Check size={8} className="text-background" />}
+                   </div>
+                   <span className={`text-[11px] leading-tight ${todo.completed ? 'text-gray-500 line-through' : 'text-gray-300'}`}>
+                      {todo.task}
+                   </span>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -92,36 +105,17 @@ export default function ChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input & Modes */}
+      {/* Input & Actions */}
       <div className="p-4 border-t border-gray-800 bg-background/20 space-y-4">
-        {/* Actions Row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <ModeButton
-              active={mode === 'plan'}
-              onClick={() => setMode('plan')}
-              icon={<Brain size={12} />}
-              label="Plan"
-              activeColor="bg-blue-500"
-            />
-            <ModeButton
-              active={mode === 'execute'}
-              onClick={() => setMode('execute')}
-              icon={<Zap size={12} />}
-              label="Exec"
-              activeColor="bg-emerald-500"
-            />
-            <ModeButton
-              active={mode === 'fix'}
-              onClick={() => setMode('fix')}
-              icon={<Bug size={12} />}
-              label="Fix"
-              activeColor="bg-red-500"
-            />
+             <div className="text-[10px] text-gray-500 font-mono flex items-center space-x-1">
+                <Cpu size={10} />
+                <span>{model}</span>
+             </div>
           </div>
           <div className="flex items-center space-x-1">
              <IconButton icon={<RotateCcw size={14} />} onClick={onUndo} title="Undo last message" />
-             <IconButton icon={<Clock size={14} />} title="Chat history" />
              <IconButton icon={<Paperclip size={14} />} onClick={onAttachContext} title="Attach context" />
           </div>
         </div>
