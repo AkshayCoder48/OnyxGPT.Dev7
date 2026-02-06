@@ -1,246 +1,207 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import {
+  Terminal,
+  Zap,
+  Code2,
+  Cpu,
+  Globe,
+  Github,
+  ArrowRight,
+  Monitor,
+  ShieldCheck,
+  ChevronRight,
+  MessageSquare,
+  Sparkles
+} from 'lucide-react';
 
 const LandingPage = () => {
-  const { user, loading, signIn: login, signOut: logout } = useAuth();
   const navigate = useNavigate();
+  const { signIn, user } = useAuth();
 
   const handleStartBuilding = async () => {
     if (!user) {
-      const userData = await login();
-      if (userData) navigate('/dashboard');
-    } else {
-      navigate('/dashboard');
+      await signIn();
     }
+    navigate('/dashboard');
   };
 
   return (
-    <div className="min-h-screen bg-background-dark text-white font-sans selection:bg-primary/30">
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-primary/30 selection:text-white">
+      {/* Background Decorative Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 blur-[150px] rounded-full animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[150px] rounded-full animate-pulse"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:32px_32px]"></div>
+      </div>
+
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md border-b border-onyx-border px-6 py-4">
+      <nav className="fixed top-0 left-0 w-full z-50 px-8 py-6 backdrop-blur-md bg-black/20 border-b border-white/5">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-3xl">terminal</span>
-            <span className="text-2xl font-bold font-display tracking-tight">OnyxGPT<span className="text-primary">.Dev</span></span>
+          <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => navigate('/')}>
+            <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center text-black font-black shadow-[0_0_20px_rgba(0,228,204,0.4)] group-hover:scale-110 transition-transform">O</div>
+            <span className="font-display font-bold text-2xl tracking-tighter">Onyx<span className="text-primary">GPT</span></span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-onyx-text-muted">
-            <a href="#features" className="hover:text-primary transition-colors">Features</a>
-            <a href="#showcase" className="hover:text-primary transition-colors">Showcase</a>
-          </div>
-          <div className="flex items-center gap-4">
-            {loading ? (
-              <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
-            ) : user ? (
-              <>
-                <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors">Go to Dashboard</button>
-                <button onClick={logout} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all">Logout</button>
-              </>
-            ) : (
-              <>
-                <button onClick={login} className="text-sm font-bold hover:text-primary transition-colors">Log In</button>
-                <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300">
-                  Get Started
-                </button>
-              </>
-            )}
+          <div className="flex items-center space-x-8">
+            <button
+              onClick={handleStartBuilding}
+              className="bg-primary text-black font-black px-8 py-3 rounded-2xl text-xs hover:shadow-[0_0_30px_rgba(0,228,204,0.4)] hover:scale-105 active:scale-95 transition-all uppercase tracking-widest flex items-center space-x-3"
+            >
+              <span>{user ? 'Go to Dashboard' : 'Initialize Session'}</span>
+              <ChevronRight size={14} strokeWidth={3} />
+            </button>
           </div>
         </div>
       </nav>
 
-      <main>
+      <main className="relative pt-40">
         {/* Hero Section */}
-        <section className="relative pt-32 pb-20 px-6 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
-          <div className="absolute top-40 left-1/4 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none"></div>
-
-          <div className="max-w-5xl mx-auto text-center relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-8 animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-primary"></span>
-              v2.0 Now Live - Powered by Gemini 2.0
+        <section className="px-6 py-20">
+          <div className="max-w-7xl mx-auto text-center">
+            <div className="inline-flex items-center space-x-3 px-6 py-2 bg-white/5 border border-white/10 rounded-full mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+               <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Neural Infrastructure Active</span>
             </div>
-            <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight leading-tight">
-              Build the future <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-[#00f2fe]">at the speed of thought</span>
+
+            <h1 className="text-6xl md:text-8xl font-display font-black tracking-tighter text-white mb-8 leading-[0.9] animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
+               Code at the <br/>
+               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-primary bg-[length:200%_auto] animate-gradient-flow">speed of thought.</span>
             </h1>
-            <p className="text-xl text-onyx-text-muted mb-10 max-w-2xl mx-auto leading-relaxed">
-              The world's first AI-native IDE that turns your ideas into full-stack applications in seconds. No setup, no boilerplate, just pure creation.
+
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-16 leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
+              The elite autonomous software architect for building, deploying, and scaling complex neural-grade applications in seconds.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
-              <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2">
-                Start Building for Free
-                <span className="material-symbols-outlined">arrow_forward</span>
+
+            <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-700">
+              <button
+                onClick={handleStartBuilding}
+                className="w-full sm:w-auto bg-primary text-black font-black px-12 py-6 rounded-[2.5rem] text-sm hover:shadow-[0_0_50px_rgba(0,228,204,0.4)] hover:scale-105 active:scale-95 transition-all uppercase tracking-[0.2em] flex items-center justify-center space-x-4 group"
+              >
+                <span>Start Building Now</span>
+                <ArrowRight size={20} strokeWidth={3} className="group-hover:translate-x-2 transition-transform" />
               </button>
             </div>
-
-            {/* Mock IDE Preview */}
-            <div className="relative group max-w-5xl mx-auto">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-transparent rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-              <div className="relative bg-onyx-card border border-onyx-border rounded-xl shadow-2xl overflow-hidden aspect-video">
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-onyx-border bg-[#1a1a1a]">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-500/20"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/20"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-500/20"></div>
-                  </div>
-                  <div className="mx-auto flex items-center gap-2 bg-black/20 px-4 py-1 rounded-md border border-white/5 text-[10px] text-gray-400 font-mono">
-                    <span className="material-symbols-outlined text-[14px]">lock</span>
-                    onyxgpt.dev/workspace/new-project
-                  </div>
-                </div>
-                <div className="flex h-full">
-                  <div className="w-1/4 border-r border-onyx-border bg-[#121212] p-4 hidden md:block text-left">
-                    <div className="flex flex-col gap-4">
-                      <div className="h-4 w-3/4 bg-white/5 rounded"></div>
-                      <div className="h-4 w-1/2 bg-white/5 rounded"></div>
-                      <div className="h-4 w-2/3 bg-white/5 rounded"></div>
-                      <div className="mt-8 h-4 w-full bg-primary/10 rounded"></div>
-                    </div>
-                  </div>
-                  <div className="flex-1 p-6 font-mono text-left">
-                     <div className="flex items-center gap-2 text-primary mb-4">
-                        <span className="material-symbols-outlined text-sm">terminal</span>
-                        <span className="text-xs">Terminal</span>
-                     </div>
-                     <div className="space-y-2">
-                        <div className="text-xs text-gray-500">➜ npm run dev</div>
-                        <div className="text-xs text-green-500">✔ Vite server started on :3000</div>
-                        <div className="text-xs text-gray-300 animate-pulse">_</div>
-                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section id="features" className="py-24 px-6 relative">
+        {/* Feature Grid */}
+        <section className="px-6 py-40 border-t border-white/5 bg-white/[0.01]">
           <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
-                <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
-                  <span className="material-symbols-outlined text-2xl">chat</span>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Natural Language Coding</h3>
-                <p className="text-onyx-text-muted text-sm leading-relaxed mb-6">
-                  Describe your app in plain English. The AI architect writes, debugs, and refactors complex logic in real-time.
-                </p>
-                <div className="bg-[#111] border border-white/5 rounded p-3 font-mono text-[10px] text-gray-400 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <span className="text-purple-400">user</span>: "Add a dark mode toggle"<br/>
-                  <span className="text-primary">ai</span>: Implementing ThemeContext...
-                </div>
-              </div>
-
-              <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
-                <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
-                  <span className="material-symbols-outlined text-2xl">deployed_code</span>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Sandboxed Environment</h3>
-                <p className="text-onyx-text-muted text-sm leading-relaxed mb-6">
-                  Run full-stack web applications directly in your browser with secure, zero-config WebContainers technology.
-                </p>
-                <div className="bg-[#111] border border-white/5 rounded p-3 font-mono text-[10px] text-gray-400 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2 h-2 rounded-full bg-green-500"></span> Server running on :3000
-                  </div>
-                  <div className="h-1 w-full bg-[#333] rounded overflow-hidden">
-                    <div className="h-full bg-primary w-2/3"></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
-                <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
-                  <span className="material-symbols-outlined text-2xl">rocket_launch</span>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">One-Click Deploy</h3>
-                <p className="text-onyx-text-muted text-sm leading-relaxed mb-6">
-                  Push your generated application straight to production with a single click. No DevOps pipelines required.
-                </p>
-                <div className="flex items-center gap-3 mt-auto">
-                  <button className="text-xs font-bold text-primary flex items-center gap-1 hover:gap-2 transition-all">
-                    Deploy Now <span className="material-symbols-outlined text-sm">arrow_right_alt</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <FeatureCard
+                  icon={<MessageSquare className="text-primary" size={32} />}
+                  title="Neural Synthesis"
+                  desc="Describe complex architectural patterns and watch Onyx generate modular, type-safe code in real-time."
+                />
+                <FeatureCard
+                  icon={<Monitor className="text-blue-400" size={32} />}
+                  title="Isolated Runtimes"
+                  desc="Execute full-stack applications in secure, browser-based WebContainers with zero configuration overhead."
+                />
+                <FeatureCard
+                  icon={<Github className="text-purple-400" size={32} />}
+                  title="Cloud Handshake"
+                  desc="Direct integration with GitHub for autonomous repository provisioning and continuous neural delivery."
+                />
+             </div>
           </div>
         </section>
 
-        {/* Use Cases Section */}
-        <section id="showcase" className="py-20 px-6 bg-[#0f0f0f]">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+        {/* Technical Specification Section */}
+        <section className="px-6 py-40 bg-black/40">
+           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
               <div>
-                <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-2">What will you build?</h2>
-                <p className="text-onyx-text-muted">Explore the endless possibilities with OnyxGPT.</p>
+                 <h2 className="text-xs font-black text-primary uppercase tracking-[0.4em] mb-6">Technical Specifications</h2>
+                 <h3 className="text-4xl md:text-5xl font-display font-bold text-white mb-8 tracking-tight">The Core Architecture</h3>
+                 <p className="text-lg text-gray-400 leading-relaxed mb-10">
+                   OnyxGPT leverages the Puter neural proxy and isolated WebContainer technology to provide a desktop-grade development experience entirely in the browser.
+                 </p>
+                 <ul className="space-y-6">
+                    <SpecItem label="Inference Engine" value="Gemini 1.5 Pro & Flash Support" />
+                    <SpecItem label="Runtime Isolation" value="P3 Neural Gated Sandboxing" />
+                    <SpecItem label="Version Control" value="Bidirectional GitHub Sync" />
+                    <SpecItem label="System Uptime" value="99.99% Neural Availability" />
+                 </ul>
               </div>
-              <button className="text-white border border-onyx-border hover:border-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
-                View Showcase
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { title: 'Dashboards', subtitle: 'Data visualization apps', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB9wxQXj7BTFwnPMHzjA4tGEH3dJatehqCB5fKCkZ51GBhrNGkvNFyHBzaqEzpo918oww3SNXGW5KBghnlyRa4XGZcOjuW910qeRgWwunupOq5wlxqOW96a7fvTd_udWDD-61-B9fAGMAEUlz5X8D-qJFAMFcUrd1NLTraEL8eMTi5fpah33a7EAazMcJUnjV9Gx_73E6I3SqHmwqN68auvnkTJ6AOhec9YHRgKV7xz8puJhcy___aepHZJRLiBCAqm_tOME3LjC6kn' },
-                { title: 'E-Commerce', subtitle: 'Storefronts & carts', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF8AT5vXCBewV2gH35kZRGkc7Xl3-djcVssmpTkYsfbsTNSgbcoMxXHv_a9oNCRZUsT1iLy5J7fqFvmY_fU4Y8xVpv9qNpTpSunLL3MGeyqZ0geoAH-g1SfcOudDGhvuj2T2BtHfbKJYwJcLz7cdgV4X8QRhQDK7iHil6BGqvjiWnPDQq2Oe5-fyM4EENaOVWn6OSll-iyCmwvDXdYSYKzL5FwCwVbhsBO3jpHlmMGRq9Gx_qLy7uN9rPpDtLhJzzwDWndhQyJ6h1F' },
-                { title: 'Landing Pages', subtitle: 'Marketing sites', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAMAx2oWA2Jcsv_NkCQSkEdLaxNwnpCnUUGQnOHq8l1ZD-zYBmwp6yll6xyA79EectYyyuWt2_nM7KXBDQAr4ZQ6OjqgDPB0VDIBJo5bC5y816MoPQZxlYjt718QQernyFhO9jTNewaLsvQp8tyvnli0PJPSNJPcEZp1NyAZCKe2DjYpGyR-8tWnxouCoSN_Aqr0zdLoOIFiU-xlQfPOurbHUGNIBKJllXjrvxLDC_1Ca6Gp4_PuyyuucnVivVwIrzAwqnIrKpF0vci' },
-                { title: 'SaaS Tools', subtitle: 'Productivity apps', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDUMtmlKPaw8ATjf6bcqbYAciBuME8eHBvONu0FZdMgTPAYJMc3hF_haFpRAMm8wRG4q2234r9Dhagm2-ezpyRlz-RrLvS-79r7XqybFqBuf8--AwqagDHPN7-eXEMTwJIC8J9W3Kt88OLLRKGIRIZwTC8MuhuEVYLV2m9F6aPkOKjnDBxcXJGuIRQDPyeTGMLkArPOoleyV5sVDUO2dtwjyRMyGzckljysJEnhDDSiswrkctBCcG6HtDVLS2aUFN-GY13DhVeE1i0I' }
-              ].map((item, i) => (
-                <div key={i} className="group relative rounded-lg overflow-hidden aspect-square cursor-pointer">
-                  <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: `url('${item.img}')` }}></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6 flex flex-col justify-end">
-                    <h4 className="text-white font-bold text-lg translate-y-2 group-hover:translate-y-0 transition-transform">{item.title}</h4>
-                    <p className="text-gray-400 text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity">{item.subtitle}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+              <div className="relative group">
+                 <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+                 <div className="relative bg-[#0a0a0a] border border-white/10 rounded-[3rem] p-4 shadow-2xl overflow-hidden aspect-video flex items-center justify-center">
+                    <Terminal size={120} className="text-primary/20 animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-12">
+                       <div className="text-[10px] font-mono text-primary/60 uppercase tracking-[0.3em] mb-2">status: optimized</div>
+                       <div className="text-xl font-bold text-white">Advanced Neural Command Interface</div>
+                    </div>
+                 </div>
+              </div>
+           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-24 px-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-background-dark to-[#0f1f1d]"></div>
-          <div className="max-w-4xl mx-auto relative z-10 text-center">
-            <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-6">Ready to code at the speed of thought?</h2>
-            <p className="text-xl text-onyx-text-muted mb-10">Join 10,000+ developers building the future with OnyxGPT.</p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300">
-                Start Building for Free
+        {/* Call to Action */}
+        <section className="px-6 py-40 text-center relative overflow-hidden">
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/[0.03] blur-[150px] pointer-events-none"></div>
+           <div className="max-w-4xl mx-auto">
+              <h2 className="text-5xl md:text-7xl font-display font-black tracking-tighter text-white mb-10">Ready to build the future?</h2>
+              <button
+                onClick={handleStartBuilding}
+                className="bg-white text-black font-black px-16 py-6 rounded-[3rem] text-sm hover:shadow-[0_0_60px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all uppercase tracking-[0.3em]"
+              >
+                Establish Neural Link
               </button>
-            </div>
-          </div>
+           </div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-[#0a0a0a] border-t border-onyx-border py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex flex-col gap-4 items-center md:items-start">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">terminal</span>
-              <span className="text-white font-bold font-display text-lg">OnyxGPT.Dev</span>
-            </div>
-            <p className="text-onyx-text-muted text-sm">© 2025 Onyx Technologies Inc.</p>
+      <footer className="px-8 py-20 border-t border-white/5 bg-black/40">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center space-y-10 md:space-y-0">
+          <div className="flex items-center space-x-4">
+            <div className="w-8 h-8 bg-white/5 rounded-xl flex items-center justify-center text-primary border border-white/10">O</div>
+            <span className="text-sm font-black uppercase tracking-[0.2em] text-gray-500">OnyxGPT.Dev © 2025</span>
           </div>
-          <div className="flex gap-8 text-sm font-medium text-onyx-text-muted">
-            <a className="hover:text-primary transition-colors" href="#">Privacy</a>
-            <a className="hover:text-primary transition-colors" href="#">Terms</a>
-            <a className="hover:text-primary transition-colors" href="#">Twitter</a>
-            <a className="hover:text-primary transition-colors" href="#">Discord</a>
+          <div className="flex items-center space-x-12">
+             <FooterLink label="Twitter" />
+             <FooterLink label="Discord" />
+             <FooterLink label="GitHub" />
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111] border border-onyx-border">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="text-xs font-mono text-gray-300">System Operational</span>
+          <div className="px-6 py-2 bg-primary/5 border border-primary/20 rounded-full">
+             <div className="flex items-center space-x-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">System Operational</span>
+             </div>
           </div>
         </div>
       </footer>
     </div>
   );
 };
+
+function FeatureCard({ icon, title, desc }) {
+  return (
+    <div className="p-12 bg-white/[0.02] border border-white/5 rounded-[3rem] hover:bg-white/[0.04] hover:border-primary/20 transition-all group shadow-xl">
+       <div className="w-16 h-16 bg-black rounded-[1.5rem] flex items-center justify-center mb-10 border border-white/5 shadow-inner group-hover:scale-110 transition-transform">
+          {icon}
+       </div>
+       <h4 className="text-2xl font-bold text-white mb-4 tracking-tight">{title}</h4>
+       <p className="text-gray-500 leading-relaxed font-medium">{desc}</p>
+    </div>
+  );
+}
+
+function SpecItem({ label, value }) {
+  return (
+    <li className="flex items-center justify-between py-4 border-b border-white/5 group">
+       <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-primary transition-colors">{label}</span>
+       <span className="text-sm font-bold text-gray-300">{value}</span>
+    </li>
+  );
+}
+
+function FooterLink({ label }) {
+  return (
+    <a href="#" className="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-white transition-colors">
+       {label}
+    </a>
+  );
+}
 
 export default LandingPage;

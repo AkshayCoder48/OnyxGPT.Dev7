@@ -1,93 +1,84 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import * as ai from '../services/aiService';
+import { getWebContainer } from '../services/webContainer';
+import {
+  getProjectMessages,
+  saveProjectMessages,
+  getProjects,
+  saveProject,
+  getGitHubToken
+} from '../services/storage';
+import * as github from '../services/githubService';
+import { generateRandomName } from '../utils/names';
 import ChatPanel from '../components/workspace/ChatPanel';
 import SettingsModal from '../components/workspace/SettingsModal';
+import CloudView from '../components/workspace/CloudView';
 import {
-  LogOut,
-  Settings,
-  Terminal as TerminalIcon,
-  Monitor,
-  Cloud,
   ChevronLeft,
-  Layout,
-  History,
-  FileCode,
-  Box,
+  Monitor,
+  Terminal as TerminalIcon,
+  Cloud,
+  Settings,
+  LogOut,
   Github,
-  Globe,
-  Loader2,
-  RefreshCcw,
-  Layers,
-  Search,
-  Activity,
+  Box,
   Cpu,
-  Zap,
+  RefreshCcw,
+  Loader2,
   Trash2
 } from 'lucide-react';
-import { chatWithAI } from '../services/aiService';
-import { PROMPTS } from '../utils/prompts';
-import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
-import { generateRandomName } from '../utils/names';
-import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
-import CloudView from '../components/workspace/CloudView';
-import * as github from '../services/githubService';
 
-export default function WorkspacePage({ user, signIn, signOut }) {
-  const { code } = useParams();
+export default function WorkspacePage() {
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const initialPrompt = searchParams.get('prompt');
   const navigate = useNavigate();
-  const location = useLocation();
-  const initialPrompt = location.state?.initialPrompt || '';
+  const { user, signOut } = useAuth();
 
-  const [activeAmenity, setActiveAmenity] = useState('preview');
+  const [project, setProject] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [activeAmenity, setActiveAmenity] = useState('preview');
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [logs, setLogs] = useState([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [ghConnected, setGhConnected] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+
   const [appSettings, setAppSettings] = useState(() => {
-    const saved = localStorage.getItem(`onyx_settings_${code}`);
+    const saved = localStorage.getItem(`onyx_settings_${id}`);
     return saved ? JSON.parse(saved) : {
-        customModelId: 'gpt-4o',
-        temperature: 0.7,
-        maxTokens: 4096,
-        systemPrompt: ''
+      modelId: 'gemini-1.5-pro',
+      temperature: 0.7,
+      systemPrompt: '',
+      maxTokens: 4096
     };
   });
-  const [model, setModel] = useState(appSettings.customModelId);
-  const [mode, setMode] = useState('execute');
-  const [logs, setLogs] = useState(['ONYX: Boot sequence initiated...', 'AUTH: Session verified.']);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [project, setProject] = useState(null);
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [ghConnected, setGhConnected] = useState(false);
 
-  const hasInitialized = useRef(false);
+  const [todos, setTodos] = useState([]);
+
   const webContainerStarted = useRef(false);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    const updated = { ...appSettings, customModelId: model };
-    setAppSettings(updated);
-    localStorage.setItem(`onyx_settings_${code}`, JSON.stringify(updated));
-  }, [model, code]);
-
-  useEffect(() => {
-    localStorage.setItem(`onyx_settings_${code}`, JSON.stringify(appSettings));
-  }, [appSettings, code]);
+    localStorage.setItem(`onyx_settings_${id}`, JSON.stringify(appSettings));
+  }, [appSettings, id]);
 
   useEffect(() => {
     const loadProject = async () => {
-      if (code && code !== 'new') {
-        const projects = await getProjects();
-        const p = projects.find(proj => proj.id === code);
-        if (p) setProject(p);
+      const projects = await getProjects();
+      const p = projects.find(item => item.id === id);
+      if (p) {
+        setProject(p);
+        setTodos(p.todos || []);
       }
+      const token = await getGitHubToken();
+      setGhConnected(!!token);
     };
     loadProject();
-    checkGitHub();
-  }, [code]);
-
-  const checkGitHub = async () => {
-    const token = await getGitHubToken();
-    setGhConnected(!!token);
-  };
+  }, [id]);
 
   useEffect(() => {
     const initWC = async () => {
@@ -95,8 +86,13 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         webContainerStarted.current = true;
         try {
           addLog('RUNTIME: Provisioning WebContainer instance...');
-          await getWebContainer();
+          const wc = await getWebContainer();
           addLog('RUNTIME: Environment isolation complete.');
+
+          wc.on('server-ready', (port, url) => {
+            setPreviewUrl(url);
+            addLog(`RUNTIME: Server active on port ${port}`);
+          });
         } catch (err) {
           addLog(`RUNTIME ERROR: ${err.message}`);
         }
@@ -107,8 +103,8 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   useEffect(() => {
     const loadData = async () => {
-      if (code && code !== 'new' && !hasInitialized.current) {
-        const data = await getProjectMessages(code);
+      if (id && !hasInitialized.current) {
+        const data = await getProjectMessages(id);
         if (data && data.length > 0) {
           setMessages(data);
           hasInitialized.current = true;
@@ -116,128 +112,208 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       }
     };
     loadData();
-  }, [code]);
+  }, [id]);
 
   useEffect(() => {
     if (initialPrompt && messages.length === 0 && !isGenerating && !hasInitialized.current) {
       handleSendMessage(initialPrompt);
       hasInitialized.current = true;
-    } else if (messages.length === 0 && !hasInitialized.current && code !== 'new') {
+    } else if (messages.length === 0 && !hasInitialized.current) {
       setMessages([{ role: 'assistant', content: "Hello! I'm Onyx. Neural engine is active and synced with Puter cloud resources. What would you like to construct today?" }]);
     }
-  }, [initialPrompt, messages.length, code]);
+  }, [initialPrompt, messages.length, id]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveProjectMessages(id, messages);
+    }
+  }, [messages, id]);
 
   const addLog = (log) => {
     setLogs(prev => [...prev, typeof log === 'string' ? log : JSON.stringify(log)]);
   };
 
-  const handleSendMessage = async (content) => {
-    if (isGenerating) return;
-    setIsGenerating(true);
-
-    let projectId = code;
-    if (projectId === 'new') {
-      projectId = Math.random().toString(36).substring(7);
-      const newProject = { id: projectId, name: generateRandomName(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-      await saveProject(newProject);
-      setProject(newProject);
-      navigate(`/workspace/${projectId}`, { replace: true });
-    }
-
-    const userMsg = { role: 'user', content, timestamp: new Date().toISOString() };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
-    await saveMessages(projectId, newMessages);
+  const executeTool = async (call) => {
+    const { name, arguments: argsString } = call.function;
+    const args = JSON.parse(argsString);
+    const wc = await getWebContainer();
 
     try {
-      let latestMsgs = newMessages;
-      await chatWithAI(
-        newMessages,
-        {
-          model: model,
-          temperature: appSettings.temperature,
-          maxTokens: appSettings.maxTokens,
-          systemPrompt: appSettings.systemPrompt || PROMPTS[mode] || PROMPTS.execute,
-          onUrlReady: (url) => {
-            setPreviewUrl(url);
-            setActiveAmenity('preview');
+      if (name === 'run_terminal_command') {
+        addLog(`onyx-app $ ${args.command}`);
+        const [cmd, ...cmdArgs] = args.command.split(' ');
+        const process = await wc.spawn(cmd, cmdArgs);
+
+        let output = '';
+        const decoder = new TextDecoder();
+        process.stdout.pipeTo(new WritableStream({
+          write(chunk) {
+            const text = decoder.decode(chunk);
+            output += text;
+            addLog(text);
           }
-        },
-        async (updatedAssistantMsg) => {
-          const finalMsgs = [...newMessages, updatedAssistantMsg];
-          setMessages(finalMsgs);
-          latestMsgs = finalMsgs;
-        },
-        (log) => addLog(log)
-      );
-      await saveMessages(projectId, latestMsgs);
+        }));
+
+        process.stderr.pipeTo(new WritableStream({
+          write(chunk) {
+            const text = decoder.decode(chunk);
+            output += text;
+            addLog(text);
+          }
+        }));
+
+        const exitCode = await process.exit;
+        return { role: 'tool', tool_call_id: call.id, content: output || `Process exited with code ${exitCode}` };
+      }
+
+      if (name === 'write_file') {
+        addLog(`FS: Writing to ${args.path}...`);
+        await wc.fs.writeFile(args.path, args.content);
+        return { role: 'tool', tool_call_id: call.id, content: `Successfully written to ${args.path}` };
+      }
     } catch (err) {
-      addLog(`AI CORE ERROR: ${err.message}`);
+      addLog(`TOOL ERROR: ${err.message}`);
+      return { role: 'tool', tool_call_id: call.id, content: `Error: ${err.message}` };
+    }
+  };
+
+  const handleSendMessage = async (content) => {
+    if (isGenerating) return;
+
+    let currentMessages = [...messages];
+    if (content) {
+      currentMessages.push({ role: 'user', content });
+      setMessages(currentMessages);
+    }
+
+    setIsGenerating(true);
+
+    try {
+      while (true) {
+        const response = await ai.generateResponse({
+          messages: currentMessages,
+          projectId: id,
+          modelId: appSettings.modelId,
+          settings: appSettings,
+          tools: availableTools,
+          onToolCall: (name, data) => {
+            if (name === 'manage_roadmap') {
+              setTodos(data);
+            }
+          }
+        });
+
+        currentMessages.push(response);
+        setMessages([...currentMessages]);
+
+        if (response.tool_calls) {
+          const toolResults = [];
+          for (const call of response.tool_calls) {
+            if (call.function.name === 'manage_roadmap') continue;
+            const result = await executeTool(call);
+            toolResults.push(result);
+          }
+          if (toolResults.length > 0) {
+            currentMessages.push(...toolResults);
+            setMessages([...currentMessages]);
+            continue; // Go for another round of generation
+          }
+        }
+        break;
+      }
+    } catch (err) {
+      console.error('Inference Failure:', err);
+      addLog(`NEURAL ERROR: ${err.message}`);
+      setMessages(prev => [...prev, { role: 'assistant', content: `Handshake failure: ${err.message}. Please check your connection or model settings.` }]);
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleUndo = () => {
-    if (messages.length > 0) {
-      const newMsgs = messages.slice(0, -1);
-      setMessages(newMsgs);
-      saveMessages(code, newMsgs);
+    if (messages.length > 1) {
+      setMessages(prev => prev.slice(0, -1));
     }
   };
 
   const handleAttachContext = () => {
-    addLog("ONYX: Neural context expanded with filesystem snapshot.");
+    addLog('SYSTEM: Context buffer attached to next inference chain.');
+  };
+
+  const handleRefreshConsole = () => {
+    setLogs([]);
+    addLog('SYSTEM: Console trace cleared.');
   };
 
   const handlePushToGitHub = async () => {
-    if (isDeploying) return;
     setIsDeploying(true);
-    addLog("onyx-app $ github-push --initiate");
+    addLog('GH_SYNC: Initiating recursive file traversal...');
     try {
-      const ghUser = await github.getUser();
-      const rawName = project?.name || 'onyx-project';
-      const repoName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(7);
-      addLog(`Creating secure repository: ${repoName}...`);
-      const repo = await github.createRepository(repoName, 'Provisioned via OnyxGPT.dev Neural Engine');
+      const wc = await getWebContainer();
+      const files = await getFilesRecursive(wc, '/');
 
-      addLog("Preparing source blobs...");
-      const filesToPush = [];
+      let repoName = project?.name?.toLowerCase().replace(/\s+/g, '-') || `onyx-project-${id}`;
+      addLog(`GH_SYNC: Provisioning repository ${repoName}...`);
 
-      const traverse = async (path) => {
-        const entries = await listFiles(path);
-        for (const entry of entries) {
-          if (entry === 'node_modules' || entry === '.git' || entry === 'dist') continue;
-          const fullPath = path === '/' ? `/${entry}` : `${path}/${entry}`;
-          try {
-            const content = await wcReadFile(fullPath);
-            filesToPush.push({ path: fullPath.substring(1), content });
-          } catch (e) {
-            await traverse(fullPath);
-          }
-        }
-      };
+      const repo = await github.createRepo(repoName);
+      addLog(`GH_SYNC: Repository provisioned. Syncing ${Object.keys(files).length} objects...`);
 
-      await traverse('/');
-
-      addLog(`Uploading ${filesToPush.length} assets to main cluster...`);
-      await github.pushFiles(ghUser.login, repo.name, 'main', filesToPush);
-      addLog("SYNC SUCCESS: GitHub repository is now live.");
+      await github.pushToRepo(repo.owner.login, repo.name, files);
+      addLog('GH_SYNC: Handshake successful. Cluster synchronized.');
       window.open(repo.html_url, '_blank');
     } catch (err) {
-      addLog(`VCS ERROR: ${err.message}`);
+      addLog(`GH_SYNC ERROR: ${err.message}`);
     } finally {
       setIsDeploying(false);
     }
   };
 
-  const handleRefreshConsole = () => {
-     addLog("CONSOLE: Clearing state and refreshing neural trace...");
-     setLogs(['ONYX: Trace refreshed.', `TIME: ${new Date().toLocaleTimeString()}`]);
+  const getFilesRecursive = async (wc, dir) => {
+    const entries = await wc.fs.readdir(dir, { withFileTypes: true });
+    const files = {};
+    for (const entry of entries) {
+      const path = dir === '/' ? entry.name : `${dir}/${entry.name}`;
+      if (entry.name === 'node_modules' || entry.name === '.git') continue;
+
+      if (entry.isDirectory()) {
+        const subFiles = await getFilesRecursive(wc, path);
+        Object.assign(files, subFiles);
+      } else {
+        const content = await wc.fs.readFile(path, 'utf-8');
+        files[path.startsWith('/') ? path.substring(1) : path] = content;
+      }
+    }
+    return files;
   };
 
+  const availableTools = [
+    {
+      name: 'run_terminal_command',
+      description: 'Execute a command in the isolated shell',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: { type: 'string', description: 'The command to execute' }
+        },
+        required: ['command']
+      }
+    },
+    {
+      name: 'write_file',
+      description: 'Write or update a file in the sandbox',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Destination path' },
+          content: { type: 'string', description: 'Buffer content' }
+        },
+        required: ['path', 'content']
+      }
+    }
+  ];
+
   return (
-    <div className="h-screen flex flex-col bg-[#050505] text-white overflow-hidden font-sans selection:bg-primary/30">
+    <div className="h-screen bg-[#050505] flex flex-col text-white font-sans selection:bg-primary/30">
       <header className="h-16 border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 relative z-30 shadow-2xl">
         <div className="flex items-center space-x-6 overflow-hidden">
           <button onClick={() => navigate('/dashboard')} className="p-2.5 hover:bg-white/5 rounded-2xl text-gray-500 hover:text-white transition-all shrink-0 active:scale-90">
@@ -267,12 +343,12 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           <div className="h-6 w-[1px] bg-white/10 mx-2 hidden sm:block"></div>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="text-gray-500 hover:text-white transition-colors p-2.5 hover:bg-white/5 rounded-2xl active:scale-90"
+            className="text-gray-400 hover:text-white transition-colors p-2.5 hover:bg-white/5 rounded-2xl active:scale-90"
             title="Agent Directives"
           >
             <Settings size={20} />
           </button>
-          <button onClick={signOut} className="text-gray-500 hover:text-red-500 transition-colors p-2.5 hover:bg-red-500/5 rounded-2xl active:scale-90" title="Terminate Session">
+          <button onClick={signOut} className="text-gray-400 hover:text-red-400 transition-colors p-2.5 hover:bg-red-400/5 rounded-2xl active:scale-90" title="Terminate Session">
             <LogOut size={20} />
           </button>
         </div>
@@ -369,13 +445,10 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           <ChatPanel
             messages={messages}
             onSend={handleSendMessage}
-            model={model}
-            setModel={setModel}
-            mode={mode}
-            setMode={setMode}
             isGenerating={isGenerating}
             onUndo={handleUndo}
             onAttachContext={handleAttachContext}
+            todos={todos}
           />
         </div>
       </main>

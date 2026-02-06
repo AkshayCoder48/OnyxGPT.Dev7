@@ -33,7 +33,7 @@ export async function getUser() {
   return await response.json();
 }
 
-export async function createRepository(name, description = '', isPrivate = false) {
+export async function createRepo(name, description = '', isPrivate = false) {
   const headers = await getHeaders();
   const response = await fetch(getUrl('/user/repos'), {
     method: 'POST',
@@ -54,15 +54,15 @@ export async function createRepository(name, description = '', isPrivate = false
   return await response.json();
 }
 
-export async function pushFiles(owner, repo, branch, files) {
+export async function pushToRepo(owner, repo, filesMap, branch = 'main') {
   const headers = await getHeaders();
 
   let targetBranch = branch || 'main';
   let branchData = null;
   let attempts = 0;
 
-  // Retry loop for new repositories
-  while (attempts < 10) {
+  // Retry loop for new repositories to ensure they are initialized
+  while (attempts < 15) {
     const branchUrl = getUrl(`/repos/${owner}/${repo}/branches/${targetBranch}`);
     const branchResponse = await fetch(branchUrl, { headers });
     if (branchResponse.ok) {
@@ -80,25 +80,30 @@ export async function pushFiles(owner, repo, branch, files) {
   const baseTreeSha = branchData.commit.commit.tree.sha;
   const parentCommitSha = branchData.commit.sha;
 
-  // 1. Create blobs
+  // 1. Create blobs for each file
   const tree = [];
-  for (const file of files) {
+  const filePaths = Object.keys(filesMap);
+
+  for (const path of filePaths) {
+    const content = filesMap[path];
     const blobUrl = getUrl(`/repos/${owner}/${repo}/git/blobs`);
     const blobResponse = await fetch(blobUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        content: file.content,
+        content,
         encoding: 'utf-8',
       }),
     });
+
     if (!blobResponse.ok) {
         const err = await blobResponse.json();
-        throw new Error(`Failed to create blob for ${file.path}: ${err.message}`);
+        throw new Error(`Failed to create blob for ${path}: ${err.message}`);
     }
+
     const blobData = await blobResponse.json();
     tree.push({
-      path: file.path,
+      path,
       mode: '100644',
       type: 'blob',
       sha: blobData.sha,
