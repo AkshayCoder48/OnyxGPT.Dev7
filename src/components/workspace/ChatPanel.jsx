@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Brain, Zap, Bug, RotateCcw, Paperclip, Clock, Check, AlertCircle } from 'lucide-react';
+import { Send, Sparkles, Brain, Zap, Bug, RotateCcw, Paperclip, Clock, Check, AlertCircle, Cpu } from 'lucide-react';
 
 export default function ChatPanel({
   messages,
@@ -37,15 +37,16 @@ export default function ChatPanel({
            <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(0,228,204,0.6)]"></div>
            <h3 className="font-display font-bold text-[10px] text-gray-400 uppercase tracking-widest">Chat Interface</h3>
         </div>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="bg-background border border-gray-800 rounded px-2 py-1 text-[10px] text-gray-400 outline-none focus:border-primary transition-all"
-        >
-          <option value="gpt-4o">GPT-4o</option>
-          <option value="claude-3-5-sonnet">Claude 3.5</option>
-          <option value="gemini-2.0-flash-exp">Gemini 2.0</option>
-        </select>
+        <div className="flex items-center bg-background border border-gray-800 rounded px-2 py-1 space-x-2 group focus-within:border-primary transition-all">
+          <Cpu size={12} className="text-gray-500 group-focus-within:text-primary" />
+          <input
+            type="text"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder="Model ID (e.g. gpt-4o)"
+            className="bg-transparent text-[10px] text-gray-300 outline-none w-32 font-mono"
+          />
+        </div>
       </div>
 
       {/* Messages */}

@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
-import { saveMessage, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
+import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
+import { generateRandomName } from '../utils/names';
 import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
@@ -32,15 +33,15 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   const [activeAmenity, setActiveAmenity] = useState('preview');
   const [messages, setMessages] = useState([]);
-  const [model, setModel] = useState('gpt-4o');
+  const [appSettings, setAppSettings] = useState(() => {
+    const saved = localStorage.getItem('onyx_settings');
+    return saved ? JSON.parse(saved) : { customModelId: 'gpt-4o' };
+  });
+  const [model, setModel] = useState(appSettings.customModelId);
   const [mode, setMode] = useState('execute');
   const [logs, setLogs] = useState(['Initializing Onyx Environment...', 'User authenticated.']);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [appSettings, setAppSettings] = useState(() => {
-    const saved = localStorage.getItem('onyx_settings');
-    return saved ? JSON.parse(saved) : { customModelId: '' };
-  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [project, setProject] = useState(null);
   const [isDeploying, setIsDeploying] = useState(false);
@@ -49,7 +50,10 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const hasInitialized = useRef(false);
   const webContainerStarted = useRef(false);
 
-  // Load project metadata
+  useEffect(() => {
+    setAppSettings(prev => ({ ...prev, customModelId: model }));
+  }, [model]);
+
   useEffect(() => {
     const loadProject = async () => {
       if (code && code !== 'new') {
@@ -67,7 +71,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     setGhConnected(!!token);
   };
 
-  // Initialize WebContainer
   useEffect(() => {
     const initWC = async () => {
       if (!webContainerStarted.current) {
@@ -84,10 +87,9 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     initWC();
   }, []);
 
-  // Load existing messages
   useEffect(() => {
     const loadData = async () => {
-      if (code && code !== 'new') {
+      if (code && code !== 'new' && !hasInitialized.current) {
         const data = await getProjectMessages(code);
         if (data && data.length > 0) {
           setMessages(data);
@@ -98,7 +100,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     loadData();
   }, [code]);
 
-  // Initial prompt handling
   useEffect(() => {
     if (initialPrompt && messages.length === 0 && !isGenerating && !hasInitialized.current) {
       handleSendMessage(initialPrompt);
@@ -119,26 +120,23 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     let projectId = code;
     if (projectId === 'new') {
       projectId = Math.random().toString(36).substring(7);
-      const newProject = { id: projectId, name: content.substring(0, 20) + '...', createdAt: new Date().toISOString() };
+      const newProject = { id: projectId, name: generateRandomName(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       await saveProject(newProject);
       setProject(newProject);
       navigate(`/workspace/${projectId}`, { replace: true });
     }
 
-    const userMsg = { role: 'user', content };
+    const userMsg = { role: 'user', content, timestamp: new Date().toISOString() };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
-
-    await saveMessage(projectId, userMsg);
-
-    let finalAssistantMsg = null;
+    await saveMessages(projectId, newMessages);
 
     try {
+      let latestMsgs = newMessages;
       await chatWithAI(
         newMessages,
         {
           model: model,
-          customModelId: appSettings.customModelId,
           onUrlReady: (url) => {
             setPreviewUrl(url);
             setActiveAmenity('preview');
@@ -146,15 +144,13 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           systemPrompt: PROMPTS[mode] || PROMPTS.execute
         },
         async (updatedAssistantMsg) => {
-          setMessages([...newMessages, updatedAssistantMsg]);
-          finalAssistantMsg = updatedAssistantMsg;
+          const finalMsgs = [...newMessages, updatedAssistantMsg];
+          setMessages(finalMsgs);
+          latestMsgs = finalMsgs;
         },
         (log) => addLog(log)
       );
-
-      if (finalAssistantMsg) {
-        await saveMessage(projectId, finalAssistantMsg);
-      }
+      await saveMessages(projectId, latestMsgs);
     } catch (err) {
       addLog(`Error: ${err.message}`);
     } finally {
@@ -164,7 +160,9 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   const handleUndo = () => {
     if (messages.length > 0) {
-      setMessages(messages.slice(0, -1));
+      const newMsgs = messages.slice(0, -1);
+      setMessages(newMsgs);
+      saveMessages(code, newMsgs);
     }
   };
 
@@ -178,28 +176,29 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     addLog("Starting GitHub deployment...");
     try {
       const ghUser = await github.getUser();
-      const repoName = project?.name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `onyx-project-${code}`;
+      const rawName = project?.name || 'onyx-project';
+      const repoName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(7);
       addLog(`Creating repository: ${repoName}...`);
       const repo = await github.createRepository(repoName, 'Created via OnyxGPT.dev');
 
       addLog("Preparing files for upload...");
       const filesToPush = [];
-      const readDirRecursive = async (path) => {
+
+      const traverse = async (path) => {
         const entries = await listFiles(path);
         for (const entry of entries) {
-          if (entry === 'node_modules' || entry === '.git') continue;
+          if (entry === 'node_modules' || entry === '.git' || entry === 'dist') continue;
           const fullPath = path === '/' ? `/${entry}` : `${path}/${entry}`;
           try {
             const content = await wcReadFile(fullPath);
             filesToPush.push({ path: fullPath.substring(1), content });
           } catch (e) {
-            // Is a directory
-            await readDirRecursive(fullPath);
+            await traverse(fullPath);
           }
         }
       };
 
-      await readDirRecursive('/');
+      await traverse('/');
 
       addLog(`Pushing ${filesToPush.length} files to main branch...`);
       await github.pushFiles(ghUser.login, repo.name, 'main', filesToPush);
@@ -236,21 +235,21 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   return (
     <div className="h-screen flex flex-col bg-background text-white overflow-hidden font-sans">
       <header className="h-14 border-b border-gray-800 bg-surface flex items-center justify-between px-4 shrink-0 relative z-10">
-        <div className="flex items-center space-x-4">
-          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all">
+        <div className="flex items-center space-x-4 overflow-hidden">
+          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all shrink-0">
             <ChevronLeft size={20} />
           </button>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 shrink-0">
             <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-background text-xs font-bold">O</div>
             <h2 className="font-display font-bold text-lg tracking-tighter">Onyx<span className="text-primary">GPT</span></h2>
           </div>
-          <div className="h-4 w-[1px] bg-gray-800 mx-1"></div>
-          <div className="text-[10px] font-mono text-gray-500 bg-background px-2 py-0.5 rounded border border-gray-800">
+          <div className="h-4 w-[1px] bg-gray-800 mx-1 shrink-0"></div>
+          <div className="text-[10px] font-mono text-gray-500 bg-background px-2 py-0.5 rounded border border-gray-800 truncate max-w-[200px]">
             {project?.name || 'New Project'}
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 shrink-0">
           {ghConnected && (
             <button
               onClick={handleDeploy}
@@ -258,7 +257,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
               className="flex items-center space-x-2 px-3 py-1.5 bg-background border border-gray-800 hover:border-primary/50 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
             >
               {isDeploying ? <Loader2 size={14} className="animate-spin text-primary" /> : <Github size={14} className="text-primary" />}
-              <span>{isDeploying ? 'Deploying...' : 'Deploy to GitHub'}</span>
+              <span className="hidden sm:inline">{isDeploying ? 'Deploying...' : 'Deploy to GitHub'}</span>
             </button>
           )}
           <button
@@ -274,8 +273,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       </header>
 
       <main className="flex-1 flex overflow-hidden">
-        {/* Amenity Sidebar */}
-        <div className="w-14 border-r border-gray-800 bg-surface flex flex-col items-center py-4 space-y-4">
+        <div className="w-14 border-r border-gray-800 bg-surface flex flex-col items-center py-4 space-y-4 shrink-0">
           <AmenityButton
             active={activeAmenity === 'preview'}
             onClick={() => setActiveAmenity('preview')}
@@ -296,18 +294,12 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           />
         </div>
 
-        {/* Left Panel: Content */}
-        <div className="flex-1 flex flex-col bg-[#0a0a0a] border-r border-gray-800">
+        <div className="flex-1 flex flex-col bg-[#0a0a0a] border-r border-gray-800 relative overflow-hidden min-w-0">
           {activeAmenity === 'preview' && (
             <div className="h-full flex flex-col">
-              <div className="bg-surface p-2 border-b border-gray-800 flex items-center px-4">
+              <div className="bg-surface p-2 border-b border-gray-800 flex items-center px-4 shrink-0">
                 <div className="flex-1 max-w-xl bg-background border border-gray-700 rounded-md px-3 py-1 text-[10px] text-gray-400 font-mono overflow-hidden truncate">
                   {previewUrl || 'Waiting for dev server...'}
-                </div>
-                <div className="ml-4 flex items-center space-x-2">
-                   <button className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-primary transition-all">
-                      <Globe size={14} />
-                   </button>
                 </div>
               </div>
               {previewUrl ? (
@@ -322,7 +314,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           )}
 
           {activeAmenity === 'terminal' && (
-            <div className="h-full flex flex-col bg-[#0d0d0d]">
+            <div className="h-full flex flex-col bg-[#0d0d0d] overflow-hidden">
                <div className="p-4 flex-1 font-mono text-[11px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
                   {logs.map((log, i) => (
                     <div key={i} className="mb-1 leading-relaxed">
@@ -341,8 +333,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           {activeAmenity === 'cloud' && <CloudView />}
         </div>
 
-        {/* Right Panel: Chat */}
-        <div className="w-[400px] xl:w-[450px] flex flex-col bg-surface shadow-2xl">
+        <div className="w-[400px] xl:w-[450px] flex flex-col bg-surface shadow-2xl shrink-0">
           <ChatPanel
             messages={messages}
             onSend={handleSendMessage}

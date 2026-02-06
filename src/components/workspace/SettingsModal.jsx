@@ -1,21 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { X, Cpu, Info } from 'lucide-react';
 
 export default function SettingsModal({ isOpen, onClose, settings, setSettings }) {
-  const [localModelId, setLocalModelId] = useState(settings.customModelId || '');
-
-  useEffect(() => {
-    if (isOpen) {
-      setLocalModelId(settings.customModelId || '');
-    }
-  }, [isOpen, settings.customModelId]);
-
   if (!isOpen) return null;
-
-  const handleSave = () => {
-    setSettings({ ...settings, customModelId: localModelId });
-    onClose();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -32,20 +19,11 @@ export default function SettingsModal({ isOpen, onClose, settings, setSettings }
 
         <div className="p-6 space-y-6">
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-300">Custom Model ID</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={localModelId}
-                onChange={(e) => setLocalModelId(e.target.value)}
-                placeholder="e.g. openai/gpt-4o"
-                className="w-full bg-background border border-gray-800 rounded-xl px-4 py-3 text-sm font-mono text-primary outline-none focus:border-primary/50 transition-all"
-              />
-            </div>
             <div className="flex items-start space-x-2 p-3 bg-primary/5 rounded-lg border border-primary/10">
                <Info size={14} className="text-primary mt-0.5 shrink-0" />
                <p className="text-[11px] text-gray-400 leading-relaxed">
-                 By default, Onyx uses the selected model from the dropdown. Providing a custom Model ID will override this and inject it directly into Puter.js API calls.
+                 Model configuration has been moved directly to the Chat Interface for quicker access.
+                 Use the Model ID input in the chat header to switch between different AI models.
                </p>
             </div>
           </div>
@@ -62,14 +40,8 @@ export default function SettingsModal({ isOpen, onClose, settings, setSettings }
         </div>
 
         <footer className="px-6 py-4 bg-background/50 border-t border-gray-800 flex justify-end space-x-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-primary text-background font-bold rounded-lg text-sm hover:brightness-110 transition-all shadow-[0_0_15px_rgba(0,228,204,0.3)]"
-          >
-            Save Changes
+          <button onClick={onClose} className="px-6 py-2 bg-primary text-background font-bold rounded-lg text-sm hover:brightness-110 transition-all shadow-[0_0_15px_rgba(0,228,204,0.3)]">
+            Close
           </button>
         </footer>
       </div>

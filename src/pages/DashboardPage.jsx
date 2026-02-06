@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getProjects, saveProject, saveGitHubToken, getGitHubToken } from '../services/storage';
+import { generateRandomName } from '../utils/names';
 import * as github from '../services/githubService';
 import {
   Plus,
@@ -74,7 +75,7 @@ export default function DashboardPage() {
     const id = Math.random().toString(36).substring(7);
     const newProject = {
       id,
-      name: template ? template.name : 'Untitled Project',
+      name: template ? `${template.name} - ${generateRandomName()}` : generateRandomName(),
       template: template ? template.id : null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
