@@ -129,7 +129,12 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         onUpdate({ ...assistantMessage });
       } else if (part.type === 'tool_use') {
         toolCall = part;
-        assistantMessage.toolCalls.push(toolCall);
+        assistantMessage.toolCalls.push({
+          id: toolCall.id,
+          name: toolCall.name,
+          input: toolCall.input,
+          status: 'running'
+        });
         onUpdate({ ...assistantMessage });
       }
     }
@@ -138,6 +143,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
 
     onLog(`AI calling ${toolCall.name}...`);
     let result;
+    let status = 'success';
     const args = toolCall.input;
 
     try {
@@ -153,8 +159,9 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
           });
           result = "Server started.";
         } else {
-          await wc.runCommand(args.command, args.args, (data) => onLog(data));
-          result = "Command finished.";
+          const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
+          result = `Command finished with exit code ${exitCode}.`;
+          if (exitCode !== 0) status = 'error';
         }
       } else if (toolCall.name === 'kvSet') {
         await window.puter.kv.set(args.key, args.value);
@@ -167,8 +174,17 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         result = "File written to Puter Cloud FS.";
       }
     } catch (err) {
+      status = 'error';
       result = "Error: " + err.message;
       onLog(result);
+    }
+
+    // Update status and result in assistantMessage
+    const tcIndex = assistantMessage.toolCalls.findIndex(tc => tc.id === toolCall.id);
+    if (tcIndex !== -1) {
+      assistantMessage.toolCalls[tcIndex].status = status;
+      assistantMessage.toolCalls[tcIndex].result = result;
+      onUpdate({ ...assistantMessage });
     }
 
     currentMessages.push({
