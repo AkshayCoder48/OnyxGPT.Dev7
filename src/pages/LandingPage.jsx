@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const LandingPage = () => {
-  const { user, signIn: login, signOut: logout } = useAuth();
+  const { user, loading, signIn: login, signOut: logout } = useAuth();
   const navigate = useNavigate();
 
   const handleStartBuilding = async () => {
     if (!user) {
-      await login();
+      const userData = await login();
+      if (userData) navigate('/dashboard');
+    } else {
+      navigate('/dashboard');
     }
-    navigate('/dashboard');
   };
 
   return (
@@ -27,9 +29,11 @@ const LandingPage = () => {
             <a href="#showcase" className="hover:text-primary transition-colors">Showcase</a>
           </div>
           <div className="flex items-center gap-4">
-            {user ? (
+            {loading ? (
+              <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+            ) : user ? (
               <>
-                <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors">My Projects</button>
+                <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors">Go to Dashboard</button>
                 <button onClick={logout} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all">Logout</button>
               </>
             ) : (
@@ -47,7 +51,6 @@ const LandingPage = () => {
       <main>
         {/* Hero Section */}
         <section className="relative pt-32 pb-20 px-6 overflow-hidden">
-          {/* Background Glows */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
           <div className="absolute top-40 left-1/4 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none"></div>
 
@@ -115,7 +118,6 @@ const LandingPage = () => {
         <section id="features" className="py-24 px-6 relative">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Feature 1 */}
               <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
                 <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
@@ -131,7 +133,6 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              {/* Feature 2 */}
               <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
                 <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
@@ -151,7 +152,6 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              {/* Feature 3 */}
               <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
                 <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
