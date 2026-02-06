@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OnyxGPT.Dev Core IDE</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;family=Fira+Code:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00e6d2",
+                        "onyx-dark": "#0f2422",
+                        "onyx-light": "#204b47",
+                        "onyx-text": "#8dcec9",
+                        "background-light": "#f7f7f7",
+                        "background-dark": "#0f2422", // Using the Onyx theme background
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                        "mono": ["Fira Code", "monospace"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Scrollbar for IDE feel */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f2422;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #204b47;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2e6b66;
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-white font-display overflow-hidden h-screen flex flex-col antialiased selection:bg-primary/30 selection:text-primary">
+<!-- Top Navigation Bar -->
+<header class="h-14 shrink-0 flex items-center justify-between border-b border-[#204b47] bg-[#0f2422] px-4 z-20">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3 text-white">
+<div class="size-6 text-primary">
+<svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 4H42V17.3333V30.6667H24V44H6V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h1 class="text-white text-lg font-bold tracking-tight">OnyxGPT.Dev</h1>
+</div>
+<!-- Breadcrumbs embedded in header -->
+<div class="hidden md:flex items-center gap-2 px-4 border-l border-[#204b47] h-6">
+<span class="material-symbols-outlined text-[#204b47] text-lg">folder_open</span>
+<span class="text-onyx-text text-sm font-medium">onyx-dashboard</span>
+<span class="text-[#204b47] text-sm">/</span>
+<span class="text-onyx-text text-sm font-medium">ecommerce-v1</span>
+<span class="text-[#204b47] text-sm">/</span>
+<span class="text-white text-sm font-medium">src</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="hidden lg:flex items-center gap-6 mr-4">
+<button class="text-onyx-text hover:text-white text-sm font-medium transition-colors">Docs</button>
+<button class="text-onyx-text hover:text-white text-sm font-medium transition-colors">Feedback</button>
+</div>
+<button class="flex items-center gap-2 h-9 px-4 bg-[#204b47]/50 hover:bg-[#204b47] border border-[#204b47] text-white text-sm font-bold rounded-lg transition-all">
+<span class="material-symbols-outlined text-[18px]">ios_share</span>
+<span>Share</span>
+</button>
+<button class="flex items-center gap-2 h-9 px-4 bg-primary text-[#0f2422] hover:bg-[#00cbb9] text-sm font-bold rounded-lg transition-all shadow-[0_0_15px_rgba(0,230,210,0.3)]">
+<span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+<span>Deploy</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 ml-2 border border-white/10" title="User Profile"></div>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Left Pane: Chat Interface -->
+<section class="w-[300px] md:w-[400px] flex flex-col border-r border-[#204b47] bg-[#0f2422] shrink-0 z-10">
+<!-- Chat Header -->
+<div class="flex items-center justify-between px-4 py-3 border-b border-[#204b47]/50">
+<span class="text-xs font-bold uppercase tracking-wider text-onyx-text">Assistant History</span>
+<button class="text-onyx-text hover:text-white"><span class="material-symbols-outlined text-sm">more_horiz</span></button>
+</div>
+<!-- Chat Stream -->
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+<!-- Initial User Prompt -->
+<div class="flex flex-col gap-2 items-end">
+<div class="bg-[#204b47] text-white px-4 py-3 rounded-xl rounded-tr-sm max-w-[90%] text-sm leading-relaxed shadow-lg">
+                        Initialize a new React project for an e-commerce dashboard. Use Tailwind CSS and Vite.
+                    </div>
+<span class="text-[10px] text-onyx-text/50 font-mono">10:42 AM</span>
+</div>
+<!-- Agent Response -->
+<div class="flex gap-3">
+<div class="size-8 rounded-full bg-gradient-to-br from-[#204b47] to-[#0f2422] flex items-center justify-center border border-primary/30 shrink-0">
+<span class="material-symbols-outlined text-primary text-sm">smart_toy</span>
+</div>
+<div class="flex flex-col gap-2 flex-1">
+<div class="text-xs font-bold text-primary">Onyx Agent</div>
+<div class="text-onyx-text text-sm leading-relaxed">
+                            I've initialized the project structure. Now I'm installing the necessary dependencies for the dashboard layout.
+                        </div>
+</div>
+</div>
+<!-- Thinking Process (Accordion) -->
+<div class="ml-11 border-l-2 border-[#204b47] pl-4">
+<details class="group open:bg-[#15322f] bg-[#132c2a] rounded-lg border border-[#204b47] overflow-hidden transition-all duration-300">
+<summary class="flex cursor-pointer items-center justify-between p-3 select-none">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm animate-spin">sync</span>
+<span class="text-white text-xs font-bold">Thinking Process</span>
+</div>
+<span class="material-symbols-outlined text-onyx-text text-sm transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-3 pb-3 pt-0">
+<ul class="flex flex-col gap-2">
+<li class="text-[11px] font-mono text-onyx-text flex items-center gap-2">
+<span class="material-symbols-outlined text-green-400 text-[10px]">check_circle</span>
+<span>Analyzed project structure</span>
+</li>
+<li class="text-[11px] font-mono text-onyx-text flex items-center gap-2">
+<span class="material-symbols-outlined text-green-400 text-[10px]">check_circle</span>
+<span>Generated src/components/Sidebar.tsx</span>
+</li>
+<li class="text-[11px] font-mono text-primary flex items-center gap-2 animate-pulse">
+<span class="size-2 rounded-full bg-primary"></span>
+<span>Updating App.tsx...</span>
+</li>
+</ul>
+</div>
+</details>
+</div>
+<!-- Current Action -->
+<div class="flex gap-3">
+<div class="size-8 rounded-full bg-gradient-to-br from-[#204b47] to-[#0f2422] flex items-center justify-center border border-primary/30 shrink-0">
+<span class="material-symbols-outlined text-primary text-sm">smart_toy</span>
+</div>
+<div class="flex flex-col gap-2 flex-1">
+<div class="text-xs font-bold text-primary">Onyx Agent</div>
+<div class="text-onyx-text text-sm leading-relaxed">
+                             I'm adding a dark mode toggle to the sidebar as requested. Check the preview window.
+                        </div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 bg-[#0f2422] border-t border-[#204b47]">
+<div class="relative group">
+<textarea class="w-full bg-[#163532] text-white text-sm rounded-xl border border-[#204b47] focus:border-primary focus:ring-1 focus:ring-primary p-3 pr-12 min-h-[50px] resize-none placeholder-onyx-text/50 font-body transition-all" placeholder="Describe a change or new feature..."></textarea>
+<button class="absolute right-2 bottom-2 size-8 bg-primary hover:bg-[#00cbb9] text-[#0f2422] rounded-lg flex items-center justify-center transition-colors shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-lg">arrow_upward</span>
+</button>
+</div>
+<div class="flex items-center gap-3 mt-2 px-1">
+<button class="text-onyx-text hover:text-white text-xs flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-sm">attachment</span>
+                        Attach Context
+                    </button>
+<button class="text-onyx-text hover:text-white text-xs flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-sm">history</span>
+                        Undo Last
+                    </button>
+</div>
+</div>
+</section>
+<!-- Right Split Pane -->
+<section class="flex-1 flex flex-col bg-[#0b1a19] overflow-hidden relative">
+<!-- Live Preview (Top Right) -->
+<div class="flex-1 flex flex-col overflow-hidden m-2 mb-1 rounded-lg border border-[#204b47] bg-[#121212] shadow-2xl">
+<!-- Browser Chrome -->
+<div class="bg-[#1a1a1a] px-4 py-2 flex items-center justify-between border-b border-[#333]">
+<div class="flex items-center gap-2">
+<div class="flex gap-1.5 mr-4">
+<div class="size-3 rounded-full bg-red-500/80"></div>
+<div class="size-3 rounded-full bg-yellow-500/80"></div>
+<div class="size-3 rounded-full bg-green-500/80"></div>
+</div>
+<div class="flex items-center bg-[#252525] rounded px-3 py-1 gap-2 min-w-[300px] border border-[#333]">
+<span class="material-symbols-outlined text-gray-500 text-xs">lock</span>
+<span class="text-gray-400 text-xs font-mono">localhost:3000/dashboard</span>
+</div>
+<button class="text-gray-500 hover:text-white"><span class="material-symbols-outlined text-sm">refresh</span></button>
+</div>
+<div class="flex items-center gap-2 bg-[#252525] rounded p-0.5 border border-[#333]">
+<button class="px-2 py-0.5 bg-[#333] rounded text-xs text-white"><span class="material-symbols-outlined text-xs">desktop_windows</span></button>
+<button class="px-2 py-0.5 text-gray-500 hover:text-white"><span class="material-symbols-outlined text-xs">smartphone</span></button>
+</div>
+</div>
+<!-- Iframe Content Placeholder -->
+<div class="flex-1 relative bg-[#0f172a] overflow-hidden">
+<!-- This simulates the React App Content -->
+<div class="absolute inset-0 flex flex-row">
+<!-- App Sidebar -->
+<div class="w-64 bg-[#1e293b] border-r border-slate-700 p-4 flex flex-col gap-4">
+<div class="h-8 w-32 bg-slate-600 rounded mb-4 opacity-50"></div>
+<div class="h-4 w-full bg-slate-700 rounded opacity-30"></div>
+<div class="h-4 w-3/4 bg-slate-700 rounded opacity-30"></div>
+<div class="h-4 w-5/6 bg-slate-700 rounded opacity-30"></div>
+<div class="mt-auto p-3 bg-slate-800 rounded-lg border border-slate-600">
+<div class="flex items-center justify-between">
+<span class="text-[10px] text-slate-400">Dark Mode</span>
+<div class="w-8 h-4 bg-primary rounded-full relative"><div class="absolute right-0.5 top-0.5 size-3 bg-white rounded-full"></div></div>
+</div>
+</div>
+</div>
+<!-- App Main -->
+<div class="flex-1 p-8 bg-[#0f172a] grid grid-cols-3 gap-6">
+<div class="col-span-3 h-32 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700 flex items-center justify-center text-slate-500" data-alt="Dark themed dashboard header with charts">
+<span class="text-sm font-mono">Chart Component Area</span>
+</div>
+<div class="h-40 rounded-xl bg-slate-800 border border-slate-700" data-alt="Statistic card 1"></div>
+<div class="h-40 rounded-xl bg-slate-800 border border-slate-700" data-alt="Statistic card 2"></div>
+<div class="h-40 rounded-xl bg-slate-800 border border-slate-700" data-alt="Statistic card 3"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Terminal (Bottom Right) -->
+<div class="h-[30%] m-2 mt-1 rounded-lg border border-[#204b47] bg-[#000000] flex flex-col overflow-hidden shadow-2xl">
+<!-- Terminal Tabs -->
+<div class="flex items-center bg-[#111] border-b border-[#333] px-2">
+<button class="px-4 py-2 text-xs font-medium text-white border-t-2 border-primary bg-[#000]">Terminal</button>
+<button class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-white">Output</button>
+<button class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-white flex items-center gap-1">
+                        Problems <span class="bg-[#333] text-[10px] px-1.5 rounded-full text-gray-300">0</span>
+</button>
+<div class="flex-1"></div>
+<button class="p-1 text-gray-500 hover:text-white"><span class="material-symbols-outlined text-sm">delete</span></button>
+<button class="p-1 text-gray-500 hover:text-white"><span class="material-symbols-outlined text-sm">expand_less</span></button>
+</div>
+<!-- Terminal Output -->
+<div class="flex-1 p-3 font-mono text-xs overflow-y-auto">
+<div class="text-gray-400 mb-1">$ npm install lucide-react recharts</div>
+<div class="text-gray-500 mb-1">
+<span class="text-green-500">✔</span> Added 2 packages, and audited 145 packages in 3s
+                    </div>
+<div class="text-gray-500 mb-1">
+                        89 packages are looking for funding
+                    </div>
+<div class="text-gray-400 mb-1 mt-2">$ vite dev</div>
+<div class="text-blue-400 mb-1">  VITE v4.4.9  ready in 435 ms</div>
+<div class="text-gray-300 mb-1">
+<span class="text-green-500">➜</span>  Local:   <span class="text-cyan-400 underline">http://localhost:5173/</span>
+</div>
+<div class="text-gray-300 mb-1">
+<span class="text-green-500">➜</span>  Network: use --host to expose
+                    </div>
+<div class="flex items-center gap-1 mt-2">
+<span class="text-green-500">➜</span>
+<span class="text-white">_</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer / Status Bar -->
+<footer class="h-8 bg-[#0f2422] border-t border-[#204b47] flex items-center justify-between px-3 text-[11px] font-medium text-onyx-text select-none z-20">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 hover:text-white cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-sm">call_split</span>
+<span>main</span>
+</div>
+<div class="flex items-center gap-1.5 hover:text-white cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-sm">sync_alt</span>
+<span>0↓ 1↑</span>
+</div>
+<div class="hidden md:flex items-center gap-1.5 text-red-400">
+<span class="material-symbols-outlined text-sm">error</span>
+<span>0 errors</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span>Agent Status:</span>
+<span class="flex items-center gap-1.5 text-primary">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                    Working...
+                </span>
+</div>
+<div class="h-4 w-px bg-[#204b47]"></div>
+<div class="flex items-center gap-1 hover:text-white cursor-pointer">
+<span class="material-symbols-outlined text-sm">wifi</span>
+<span>Connected</span>
+</div>
+<div class="flex items-center gap-1 hover:text-white cursor-pointer">
+<span>UTF-8</span>
+</div>
+</div>
+</footer>
+</body></html>
