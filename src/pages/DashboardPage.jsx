@@ -33,11 +33,11 @@ export default function DashboardPage() {
   const [ghUser, setGhUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-
   useEffect(() => {
     if (user) {
       loadInitialData();
     } else if (!authLoading) {
+      // If auth finished and no user, we will redirect via the other useEffect
       setLoading(false);
     }
   }, [user, authLoading]);
@@ -83,17 +83,17 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCreateProject = async (template = null) => {
+  const handleCreateProject = async () => {
     const id = Math.random().toString(36).substring(7);
     const newProject = {
       id,
-      name: template ? `${template.name} - ${generateRandomName()}` : generateRandomName(),
-      template: template ? template.id : null,
+      name: generateRandomName(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      todos: []
     };
     await saveProject(newProject);
-    navigate(`/workspace/${id}`, { state: { initialPrompt: template ? `I'm starting a new ${template.name} project. Please initialize the basic boilerplate.` : '' } });
+    navigate(`/workspace/${id}`);
   };
 
   const handleDeleteProject = async (id) => {
@@ -104,7 +104,14 @@ export default function DashboardPage() {
     }
   };
 
-  if (authLoading || loading) {
+  // Redirection logic
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
+
+  if (authLoading || (user && loading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/5 blur-[120px] rounded-full animate-pulse"></div>
@@ -122,13 +129,9 @@ export default function DashboardPage() {
     );
   }
 
-  useEffect(() => {
-    if (!user && !authLoading && !loading) {
-      navigate('/');
-    }
-  }, [user, authLoading, loading, navigate]);
-
-  if (!user) return null;
+  if (!user) {
+     return <div className="min-h-screen bg-background"></div>; // Prevents flash of content before redirect
+  }
 
   const filteredProjects = projects.filter(p =>
     p?.name?.toLowerCase().includes(searchQuery.toLowerCase())

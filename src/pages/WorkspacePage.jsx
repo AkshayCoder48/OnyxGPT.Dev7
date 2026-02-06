@@ -27,8 +27,10 @@ import { generateRandomName } from '../utils/names';
 import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
+import { useAuth } from '../hooks/useAuth';
 
-export default function WorkspacePage({ user, signIn, signOut }) {
+export default function WorkspacePage() {
+  const { user, loading: authLoading, signIn, signOut } = useAuth();
   const { code } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,7 +50,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     };
     return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
   });
-  const [model, setModel] = useState(appSettings.customModelId);
   const [mode, setMode] = useState('execute');
   const [logs, setLogs] = useState(['Initializing Onyx Environment...', 'User authenticated.']);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -57,13 +58,10 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const [project, setProject] = useState(null);
   const [isDeploying, setIsDeploying] = useState(false);
   const [ghConnected, setGhConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const hasInitialized = useRef(false);
   const webContainerStarted = useRef(false);
-
-  useEffect(() => {
-    setModel(appSettings.customModelId);
-  }, [appSettings.customModelId]);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -75,19 +73,31 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           if (p.todos) setTodos(p.todos);
         }
       }
+      setLoading(false);
     };
-    loadProject();
-    checkGitHub();
-  }, [code]);
+    if (user) {
+      loadProject();
+      checkGitHub();
+    }
+  }, [code, user]);
 
   const checkGitHub = async () => {
     const token = await getGitHubToken();
     setGhConnected(!!token);
   };
 
+  const refreshFiles = async () => {
+    try {
+      const entries = await listFiles('/');
+      setFiles(entries);
+    } catch (err) {
+      console.error('Failed to list files', err);
+    }
+  };
+
   useEffect(() => {
     const initWC = async () => {
-      if (!webContainerStarted.current) {
+      if (!webContainerStarted.current && user) {
         webContainerStarted.current = true;
         try {
           addLog('Booting WebContainer...');
@@ -100,11 +110,11 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       }
     };
     initWC();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const loadData = async () => {
-      if (code && code !== 'new' && !hasInitialized.current) {
+      if (code && code !== 'new' && !hasInitialized.current && user) {
         const data = await getProjectMessages(code);
         if (data && data.length > 0) {
           setMessages(data);
@@ -113,29 +123,20 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       }
     };
     loadData();
-  }, [code]);
+  }, [code, user]);
 
   useEffect(() => {
-    if (initialPrompt && messages.length === 0 && !isGenerating && !hasInitialized.current) {
+    if (initialPrompt && messages.length === 0 && !isGenerating && !hasInitialized.current && user) {
       handleSendMessage(initialPrompt);
       hasInitialized.current = true;
-    } else if (messages.length === 0 && !hasInitialized.current && code !== 'new') {
+    } else if (messages.length === 0 && !hasInitialized.current && code !== 'new' && user) {
       setMessages([{ role: 'assistant', content: "Hello! I'm Onyx. I've initialized your cloud environment. What would you like to build today?" }]);
     }
-  }, [initialPrompt, messages.length, code]);
+  }, [initialPrompt, messages.length, code, user]);
 
   const addLog = (log) => {
     if (typeof log === 'string' && (log.includes('AI calling') || log.includes('tool_use'))) return; // Filter out verbose AI calling logs
     setLogs(prev => [...prev, typeof log === 'string' ? log : JSON.stringify(log)]);
-  };
-
-  const refreshFiles = async () => {
-    try {
-      const entries = await listFiles('/');
-      setFiles(entries);
-    } catch (err) {
-      console.error('Failed to list files', err);
-    }
   };
 
   const refreshTerminal = async () => {
@@ -207,7 +208,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       await chatWithAI(
         newMessages,
         {
-          model: model,
+          model: appSettings.customModelId,
           onUrlReady: (url) => {
             setPreviewUrl(url);
             setActiveAmenity('preview');
@@ -297,10 +298,21 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   }, [appSettings]);
 
   useEffect(() => {
-    if (!user && !loading) {
+    if (!user && !authLoading) {
       navigate('/');
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
+
+  if (authLoading || (user && loading)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+         <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">Resuming Workspace</p>
+         </div>
+      </div>
+    );
+  }
 
   if (!user) return null;
 
@@ -483,8 +495,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           <ChatPanel
             messages={messages}
             onSend={handleSendMessage}
-            model={model}
-            setModel={setModel}
+            model={appSettings.customModelId}
             mode={mode}
             setMode={setMode}
             isGenerating={isGenerating}

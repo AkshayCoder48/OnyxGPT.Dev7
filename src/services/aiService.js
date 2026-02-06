@@ -173,6 +173,17 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       }
     }
 
+    // Push the assistant's turn (text and/or tool calls) to history
+    const historyEntry = { role: 'assistant', content: currentIterationMessage.content || '' };
+    if (toolCall) {
+      historyEntry.tool_calls = [{
+        id: toolCall.id,
+        type: 'function',
+        function: { name: toolCall.name, arguments: JSON.stringify(toolCall.input) }
+      }];
+    }
+    currentMessages.push(historyEntry);
+
     if (!toolCall) break;
 
     let result;
@@ -232,14 +243,6 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       onUpdate({ ...finalAssistantMessage });
     }
 
-    currentMessages.push({
-      role: 'assistant',
-      tool_calls: [{
-        id: toolCall.id,
-        type: 'function',
-        function: { name: toolCall.name, arguments: JSON.stringify(args) }
-      }]
-    });
     currentMessages.push({
       role: 'tool',
       tool_call_id: toolCall.id,

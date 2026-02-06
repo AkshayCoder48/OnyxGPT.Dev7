@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-export function useAuth() {
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,9 +25,6 @@ export function useAuth() {
 
   useEffect(() => {
     checkAuth();
-
-    // Puter doesn't have an easy "onAuthChange" listener in v2 docs sometimes,
-    // but we can poll or rely on explicit actions.
   }, [checkAuth]);
 
   const signIn = async () => {
@@ -51,5 +50,21 @@ export function useAuth() {
     }
   };
 
-  return { user, loading, signIn, signOut, checkAuth };
+  const value = {
+    user,
+    loading,
+    signIn,
+    signOut,
+    checkAuth
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
