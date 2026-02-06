@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Cpu, Info } from 'lucide-react';
 
 export default function SettingsModal({ isOpen, onClose, settings, setSettings }) {
   const [localModelId, setLocalModelId] = useState(settings.customModelId || '');
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalModelId(settings.customModelId || '');
+    }
+  }, [isOpen, settings.customModelId]);
 
   if (!isOpen) return null;
 

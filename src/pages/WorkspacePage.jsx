@@ -12,13 +12,17 @@ import {
   Layout,
   History,
   FileCode,
-  Box
+  Box,
+  Github,
+  Globe,
+  Loader2
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
-import { saveMessage, getProjectMessages, saveProject, getProjects } from '../services/storage';
-import { getWebContainer } from '../services/webContainer';
+import { saveMessage, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
+import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
+import * as github from '../services/githubService';
 
 export default function WorkspacePage({ user, signIn, signOut }) {
   const { code } = useParams();
@@ -39,6 +43,8 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [project, setProject] = useState(null);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [ghConnected, setGhConnected] = useState(false);
 
   const hasInitialized = useRef(false);
   const webContainerStarted = useRef(false);
@@ -53,7 +59,13 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       }
     };
     loadProject();
+    checkGitHub();
   }, [code]);
+
+  const checkGitHub = async () => {
+    const token = await getGitHubToken();
+    setGhConnected(!!token);
+  };
 
   // Initialize WebContainer
   useEffect(() => {
@@ -160,6 +172,46 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     addLog("Context attached: Filesystem snapshot taken.");
   };
 
+  const handleDeploy = async () => {
+    if (isDeploying) return;
+    setIsDeploying(true);
+    addLog("Starting GitHub deployment...");
+    try {
+      const ghUser = await github.getUser();
+      const repoName = project?.name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `onyx-project-${code}`;
+      addLog(`Creating repository: ${repoName}...`);
+      const repo = await github.createRepository(repoName, 'Created via OnyxGPT.dev');
+
+      addLog("Preparing files for upload...");
+      const filesToPush = [];
+      const readDirRecursive = async (path) => {
+        const entries = await listFiles(path);
+        for (const entry of entries) {
+          if (entry === 'node_modules' || entry === '.git') continue;
+          const fullPath = path === '/' ? `/${entry}` : `${path}/${entry}`;
+          try {
+            const content = await wcReadFile(fullPath);
+            filesToPush.push({ path: fullPath.substring(1), content });
+          } catch (e) {
+            // Is a directory
+            await readDirRecursive(fullPath);
+          }
+        }
+      };
+
+      await readDirRecursive('/');
+
+      addLog(`Pushing ${filesToPush.length} files to main branch...`);
+      await github.pushFiles(ghUser.login, repo.name, 'main', filesToPush);
+      addLog("Deployment successful!");
+      window.open(repo.html_url, '_blank');
+    } catch (err) {
+      addLog(`Deployment failed: ${err.message}`);
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('onyx_settings', JSON.stringify(appSettings));
   }, [appSettings]);
@@ -199,6 +251,16 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         </div>
 
         <div className="flex items-center space-x-3">
+          {ghConnected && (
+            <button
+              onClick={handleDeploy}
+              disabled={isDeploying}
+              className="flex items-center space-x-2 px-3 py-1.5 bg-background border border-gray-800 hover:border-primary/50 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+            >
+              {isDeploying ? <Loader2 size={14} className="animate-spin text-primary" /> : <Github size={14} className="text-primary" />}
+              <span>{isDeploying ? 'Deploying...' : 'Deploy to GitHub'}</span>
+            </button>
+          )}
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"
@@ -242,6 +304,11 @@ export default function WorkspacePage({ user, signIn, signOut }) {
                 <div className="flex-1 max-w-xl bg-background border border-gray-700 rounded-md px-3 py-1 text-[10px] text-gray-400 font-mono overflow-hidden truncate">
                   {previewUrl || 'Waiting for dev server...'}
                 </div>
+                <div className="ml-4 flex items-center space-x-2">
+                   <button className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-primary transition-all">
+                      <Globe size={14} />
+                   </button>
+                </div>
               </div>
               {previewUrl ? (
                 <iframe src={previewUrl} className="flex-1 w-full bg-white" title="Live Preview" />
@@ -256,15 +323,15 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
           {activeAmenity === 'terminal' && (
             <div className="h-full flex flex-col bg-[#0d0d0d]">
-               <div className="p-4 flex-1 font-mono text-xs overflow-y-auto">
+               <div className="p-4 flex-1 font-mono text-[11px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
                   {logs.map((log, i) => (
-                    <div key={i} className="mb-1">
-                      <span className="text-primary mr-2">➜</span>
-                      <span className="text-gray-300">{log}</span>
+                    <div key={i} className="mb-1 leading-relaxed">
+                      <span className="text-primary/50 mr-2 opacity-50">➜</span>
+                      <span className="text-gray-300 whitespace-pre-wrap">{log}</span>
                     </div>
                   ))}
                   <div className="flex items-center mt-2">
-                    <span className="text-primary mr-2">onyx-app $</span>
+                    <span className="text-primary mr-2 font-bold">onyx-app $</span>
                     <span className="w-2 h-4 bg-primary animate-pulse"></span>
                   </div>
                </div>
@@ -275,7 +342,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         </div>
 
         {/* Right Panel: Chat */}
-        <div className="w-[400px] xl:w-[450px] flex flex-col bg-surface">
+        <div className="w-[400px] xl:w-[450px] flex flex-col bg-surface shadow-2xl">
           <ChatPanel
             messages={messages}
             onSend={handleSendMessage}
@@ -306,7 +373,7 @@ function AmenityButton({ active, onClick, icon, label }) {
       onClick={onClick}
       className={`p-3 rounded-xl transition-all relative group ${
         active
-          ? 'bg-primary text-background'
+          ? 'bg-primary text-background shadow-lg shadow-primary/20 scale-105'
           : 'text-gray-500 hover:text-white hover:bg-white/5'
       }`}
     >

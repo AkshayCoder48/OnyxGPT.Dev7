@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getProjects, saveProject, saveGitHubToken, getGitHubToken } from '../services/storage';
+import * as github from '../services/githubService';
 import {
   Plus,
   Search,
@@ -16,7 +17,8 @@ import {
   Terminal,
   Grid,
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -26,6 +28,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('projects');
   const [searchQuery, setSearchQuery] = useState('');
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
+  const [ghUser, setGhUser] = useState(null);
 
   const templates = [
     { id: 'react-basic', name: 'React Basic', description: 'Vite + React + Tailwind', icon: '⚛️' },
@@ -47,15 +50,24 @@ export default function DashboardPage() {
 
   const checkGitHub = async () => {
     const token = await getGitHubToken();
-    setIsGitHubConnected(!!token);
+    if (token) {
+      try {
+        const user = await github.getUser();
+        setGhUser(user);
+        setIsGitHubConnected(true);
+      } catch (err) {
+        console.error('GitHub token invalid', err);
+        setIsGitHubConnected(false);
+      }
+    }
   };
 
   const handleConnectGitHub = async () => {
-    // Mock OAuth flow
-    const mockToken = 'ghp_' + Math.random().toString(36).substring(7);
-    await saveGitHubToken(mockToken);
-    setIsGitHubConnected(true);
-    alert("GitHub connected successfully! (Simulated)");
+    const token = prompt("Please enter your GitHub Personal Access Token (with repo scope):");
+    if (token) {
+      await saveGitHubToken(token);
+      await checkGitHub();
+    }
   };
 
   const handleCreateProject = async (template = null) => {
@@ -212,21 +224,37 @@ export default function DashboardPage() {
               <Github size={64} className="mx-auto text-white mb-6" />
               {isGitHubConnected ? (
                 <div className="space-y-6">
-                   <div className="flex items-center justify-center space-x-2 text-green-500 font-bold text-xl">
-                      <CheckCircle2 size={24} />
-                      <span>GitHub Connected</span>
+                   <div className="flex items-center justify-center space-x-3">
+                      <img src={ghUser?.avatar_url} className="w-12 h-12 rounded-full border-2 border-primary" alt="GH Avatar" />
+                      <div className="text-left">
+                        <div className="flex items-center space-x-2 text-green-500 font-bold text-xl">
+                          <CheckCircle2 size={24} />
+                          <span>Connected as {ghUser?.login}</span>
+                        </div>
+                        <p className="text-gray-500 text-sm">{ghUser?.bio || 'No bio available'}</p>
+                      </div>
                    </div>
-                   <p className="text-gray-400">
-                     Your account is linked. OnyxGPT can now create repositories and push code on your behalf.
-                   </p>
+                   <div className="p-4 bg-background/50 border border-gray-800 rounded-xl text-left space-y-2">
+                      <div className="text-xs text-gray-500 uppercase font-bold tracking-widest">Permissions</div>
+                      <div className="flex items-center space-x-2 text-xs text-gray-400">
+                         <CheckCircle2 size={12} className="text-primary" />
+                         <span>Create public and private repositories</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-xs text-gray-400">
+                         <CheckCircle2 size={12} className="text-primary" />
+                         <span>Push code updates to main branch</span>
+                      </div>
+                   </div>
                    <button
-                    onClick={() => {
-                      localStorage.removeItem('github_token');
+                    onClick={async () => {
+                      await window.puter.kv.del('github_token');
                       setIsGitHubConnected(false);
+                      setGhUser(null);
                     }}
-                    className="text-red-400 hover:underline text-sm"
+                    className="flex items-center space-x-2 mx-auto text-red-400 hover:text-red-300 transition-colors text-sm"
                    >
-                     Disconnect Account
+                     <XCircle size={16} />
+                     <span>Disconnect Account</span>
                    </button>
                 </div>
               ) : (
@@ -238,11 +266,14 @@ export default function DashboardPage() {
                   </p>
                   <button
                     onClick={handleConnectGitHub}
-                    className="bg-white text-background font-bold px-8 py-4 rounded-xl hover:bg-gray-200 transition-all flex items-center space-x-3 mx-auto"
+                    className="bg-white text-background font-bold px-8 py-4 rounded-xl hover:bg-gray-200 transition-all flex items-center space-x-3 mx-auto shadow-lg"
                   >
                     <Github size={20} />
-                    <span>Authorize GitHub</span>
+                    <span>Authorize with Token</span>
                   </button>
+                  <p className="mt-6 text-[10px] text-gray-600 italic">
+                    Note: Your token is stored securely in your private Puter.js Key-Value storage.
+                  </p>
                 </>
               )}
             </div>

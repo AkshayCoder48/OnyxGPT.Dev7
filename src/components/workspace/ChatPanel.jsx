@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Brain, Zap, Bug, RotateCcw, Paperclip, Clock } from 'lucide-react';
+import { Send, Sparkles, Brain, Zap, Bug, RotateCcw, Paperclip, Clock, Check, AlertCircle } from 'lucide-react';
 
 export default function ChatPanel({
   messages,
@@ -64,9 +64,23 @@ export default function ChatPanel({
               {msg.toolCalls && msg.toolCalls.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {msg.toolCalls.map((tc, j) => (
-                    <div key={j} className="flex items-center space-x-2 text-[10px] text-primary font-mono bg-primary/5 p-1.5 rounded border border-primary/10">
-                      <Zap size={10} className="animate-pulse" />
-                      <span>{tc?.name || "tool"}({Object.keys(tc.input || {}).join(', ')})</span>
+                    <div key={j} className={`flex items-center space-x-2 text-[10px] font-mono p-1.5 rounded border transition-all ${
+                      tc.status === 'error'
+                        ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                        : tc.status === 'success'
+                          ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                          : 'bg-primary/5 border-primary/10 text-primary'
+                    }`}>
+                      {tc.status === 'running' ? (
+                        <Zap size={10} className="animate-pulse" />
+                      ) : tc.status === 'success' ? (
+                        <Check size={10} />
+                      ) : (
+                        <AlertCircle size={10} />
+                      )}
+                      <span className="font-bold">{tc?.name || "tool"}</span>
+                      <span className="opacity-60 truncate">({Object.keys(tc.input || {}).join(', ')})</span>
+                      {tc.result && <span className="opacity-80 ml-1 border-l border-white/10 pl-2 truncate">{tc.result}</span>}
                     </div>
                   ))}
                 </div>
