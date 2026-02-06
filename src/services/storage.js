@@ -77,3 +77,19 @@ export async function clearProjectMessages(projectId) {
         console.error('Error clearing messages:', error);
     }
 }
+
+// GitHub Token storage
+export async function saveGitHubToken(token) {
+  if (!window.puter) return;
+  await window.puter.kv.set('github_token', token);
+}
+
+export async function getGitHubToken() {
+  if (!window.puter) return null;
+  return await window.puter.kv.get('github_token');
+}
+
+export async function deleteGitHubToken() {
+  if (!window.puter) return;
+  await window.puter.kv.del('github_token');
+}
