@@ -1,10 +1,19 @@
 /**
  * GitHub API service for OnyxGPT.dev
  * Handles repository creation and code pushing using the stored GitHub token.
+ * Uses window.puter.proxy to bypass CORS issues.
  */
 import { getGitHubToken } from './storage';
 
 const GITHUB_API_BASE = 'https://api.github.com';
+
+function getUrl(path) {
+  const url = path.startsWith('http') ? path : `${GITHUB_API_BASE}${path}`;
+  if (window.puter && window.puter.proxy) {
+    return window.puter.proxy(url);
+  }
+  return url;
+}
 
 async function getHeaders() {
   const token = await getGitHubToken();
@@ -19,14 +28,14 @@ async function getHeaders() {
 
 export async function getUser() {
   const headers = await getHeaders();
-  const response = await fetch(`${GITHUB_API_BASE}/user`, { headers });
+  const response = await fetch(getUrl('/user'), { headers });
   if (!response.ok) throw new Error('Failed to fetch GitHub user');
   return await response.json();
 }
 
 export async function createRepository(name, description = '', isPrivate = false) {
   const headers = await getHeaders();
-  const response = await fetch(`${GITHUB_API_BASE}/user/repos`, {
+  const response = await fetch(getUrl('/user/repos'), {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -48,13 +57,14 @@ export async function createRepository(name, description = '', isPrivate = false
 export async function pushFiles(owner, repo, branch, files) {
   const headers = await getHeaders();
 
-  // 1. Ensure target branch exists (retry if repo was just created)
   let targetBranch = branch || 'main';
   let branchData = null;
   let attempts = 0;
 
-  while (attempts < 5) {
-    const branchResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/branches/${targetBranch}`, { headers });
+  // Retry loop for new repositories
+  while (attempts < 10) {
+    const branchUrl = getUrl(`/repos/${owner}/${repo}/branches/${targetBranch}`);
+    const branchResponse = await fetch(branchUrl, { headers });
     if (branchResponse.ok) {
       branchData = await branchResponse.json();
       break;
@@ -64,16 +74,17 @@ export async function pushFiles(owner, repo, branch, files) {
   }
 
   if (!branchData) {
-    throw new Error(`Failed to find branch ${targetBranch}. The repository might still be initializing.`);
+    throw new Error(`Failed to find branch ${targetBranch}. Ensure the repository is initialized.`);
   }
 
   const baseTreeSha = branchData.commit.commit.tree.sha;
   const parentCommitSha = branchData.commit.sha;
 
-  // 2. Create blobs for each file
+  // 1. Create blobs
   const tree = [];
   for (const file of files) {
-    const blobResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/blobs`, {
+    const blobUrl = getUrl(`/repos/${owner}/${repo}/git/blobs`);
+    const blobResponse = await fetch(blobUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -81,7 +92,10 @@ export async function pushFiles(owner, repo, branch, files) {
         encoding: 'utf-8',
       }),
     });
-    if (!blobResponse.ok) throw new Error(`Failed to create blob for ${file.path}`);
+    if (!blobResponse.ok) {
+        const err = await blobResponse.json();
+        throw new Error(`Failed to create blob for ${file.path}: ${err.message}`);
+    }
     const blobData = await blobResponse.json();
     tree.push({
       path: file.path,
@@ -91,8 +105,9 @@ export async function pushFiles(owner, repo, branch, files) {
     });
   }
 
-  // 3. Create a new tree
-  const treeResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees`, {
+  // 2. Create tree
+  const treeUrl = getUrl(`/repos/${owner}/${repo}/git/trees`);
+  const treeResponse = await fetch(treeUrl, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -103,8 +118,9 @@ export async function pushFiles(owner, repo, branch, files) {
   if (!treeResponse.ok) throw new Error('Failed to create tree');
   const treeData = await treeResponse.json();
 
-  // 4. Create a new commit
-  const commitResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits`, {
+  // 3. Create commit
+  const commitUrl = getUrl(`/repos/${owner}/${repo}/git/commits`);
+  const commitResponse = await fetch(commitUrl, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -116,8 +132,9 @@ export async function pushFiles(owner, repo, branch, files) {
   if (!commitResponse.ok) throw new Error('Failed to create commit');
   const commitData = await commitResponse.json();
 
-  // 5. Update the branch reference
-  const refResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, {
+  // 4. Update ref
+  const refUrl = getUrl(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`);
+  const refResponse = await fetch(refUrl, {
     method: 'PATCH',
     headers,
     body: JSON.stringify({

@@ -11,10 +11,12 @@ export async function getWebContainer() {
 
   if (window.__WEBCONTAINER_PROMISE__) {
     try {
-      return await window.__WEBCONTAINER_PROMISE__;
+      const instance = await window.__WEBCONTAINER_PROMISE__;
+      window.__WEBCONTAINER_INSTANCE__ = instance;
+      return instance;
     } catch (e) {
-      // If the promise failed with a security or boot error, we might need a refresh.
-      // But let's allow one retry if it was a different error.
+      // If the existing promise failed, and it's not a "already booted" error,
+      // we should probably allow a fresh boot attempt.
       if (!e.message.includes('SharedArrayBuffer') && !e.message.includes('instances')) {
         window.__WEBCONTAINER_PROMISE__ = null;
       } else {
@@ -26,7 +28,7 @@ export async function getWebContainer() {
   console.log("ONYX: Initializing WebContainer boot sequence...");
 
   if (!window.crossOriginIsolated) {
-    console.error("ONYX: Environment is NOT cross-origin isolated. WebContainer will fail.");
+    console.warn("ONYX: Environment is NOT cross-origin isolated. WebContainer might fail.");
   }
 
   window.__WEBCONTAINER_PROMISE__ = (async () => {
@@ -41,11 +43,13 @@ export async function getWebContainer() {
 
       if (isAlreadyBooted) {
         console.warn("ONYX: WebContainer already booted elsewhere.");
-        throw new Error("WebContainer instance already exists. If you see this, please try refreshing the page to reconnect.");
+        // If we get this error but don't have the instance, we are in an inconsistent state.
+        // We throw a clear message to the user.
+        throw new Error("WebContainer instance already exists. This can happen if the page was refreshed. Please try a hard refresh (Ctrl+F5) to reset the environment.");
       }
 
       if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
-        throw new Error("Security Error: Cross-Origin Isolation (COOP/COEP) headers are missing. This is usually caused by the hosting environment or a missing server configuration.");
+        throw new Error("Security Error: Cross-Origin Isolation (COOP/COEP) headers are missing. The server must be configured to allow SharedArrayBuffer.");
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;

@@ -18,7 +18,11 @@ import {
   Loader2,
   RefreshCcw,
   Layers,
-  Search
+  Search,
+  Activity,
+  Cpu,
+  Zap,
+  Trash2
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
@@ -47,7 +51,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   });
   const [model, setModel] = useState(appSettings.customModelId);
   const [mode, setMode] = useState('execute');
-  const [logs, setLogs] = useState(['Initializing Onyx Environment...', 'User authenticated.']);
+  const [logs, setLogs] = useState(['ONYX: Boot sequence initiated...', 'AUTH: Session verified.']);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -90,11 +94,11 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       if (!webContainerStarted.current) {
         webContainerStarted.current = true;
         try {
-          addLog('Booting WebContainer...');
+          addLog('RUNTIME: Provisioning WebContainer instance...');
           await getWebContainer();
-          addLog('WebContainer ready.');
+          addLog('RUNTIME: Environment isolation complete.');
         } catch (err) {
-          addLog(`WebContainer Error: ${err.message}`);
+          addLog(`RUNTIME ERROR: ${err.message}`);
         }
       }
     };
@@ -119,7 +123,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       handleSendMessage(initialPrompt);
       hasInitialized.current = true;
     } else if (messages.length === 0 && !hasInitialized.current && code !== 'new') {
-      setMessages([{ role: 'assistant', content: "Hello! I'm Onyx. I've initialized your cloud environment. What would you like to build today?" }]);
+      setMessages([{ role: 'assistant', content: "Hello! I'm Onyx. Neural engine is active and synced with Puter cloud resources. What would you like to construct today?" }]);
     }
   }, [initialPrompt, messages.length, code]);
 
@@ -168,7 +172,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       );
       await saveMessages(projectId, latestMsgs);
     } catch (err) {
-      addLog(`Error: ${err.message}`);
+      addLog(`AI CORE ERROR: ${err.message}`);
     } finally {
       setIsGenerating(false);
     }
@@ -183,21 +187,21 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   };
 
   const handleAttachContext = () => {
-    addLog("Context attached: Filesystem snapshot taken.");
+    addLog("ONYX: Neural context expanded with filesystem snapshot.");
   };
 
   const handlePushToGitHub = async () => {
     if (isDeploying) return;
     setIsDeploying(true);
-    addLog("onyx-app $ github-push initiate");
+    addLog("onyx-app $ github-push --initiate");
     try {
       const ghUser = await github.getUser();
       const rawName = project?.name || 'onyx-project';
       const repoName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(7);
-      addLog(`Creating repository: ${repoName}...`);
-      const repo = await github.createRepository(repoName, 'Created via OnyxGPT.dev');
+      addLog(`Creating secure repository: ${repoName}...`);
+      const repo = await github.createRepository(repoName, 'Provisioned via OnyxGPT.dev Neural Engine');
 
-      addLog("Preparing files for upload...");
+      addLog("Preparing source blobs...");
       const filesToPush = [];
 
       const traverse = async (path) => {
@@ -216,88 +220,107 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
       await traverse('/');
 
-      addLog(`Pushing ${filesToPush.length} files to main branch...`);
+      addLog(`Uploading ${filesToPush.length} assets to main cluster...`);
       await github.pushFiles(ghUser.login, repo.name, 'main', filesToPush);
-      addLog("Push successful! Repository live.");
+      addLog("SYNC SUCCESS: GitHub repository is now live.");
       window.open(repo.html_url, '_blank');
     } catch (err) {
-      addLog(`GitHub error: ${err.message}`);
+      addLog(`VCS ERROR: ${err.message}`);
     } finally {
       setIsDeploying(false);
     }
   };
 
+  const handleRefreshConsole = () => {
+     addLog("CONSOLE: Clearing state and refreshing neural trace...");
+     setLogs(['ONYX: Trace refreshed.', `TIME: ${new Date().toLocaleTimeString()}`]);
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-[#050505] text-white overflow-hidden font-sans">
-      <header className="h-14 border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-md flex items-center justify-between px-4 shrink-0 relative z-10">
-        <div className="flex items-center space-x-4 overflow-hidden">
-          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-white transition-all shrink-0">
-            <ChevronLeft size={20} />
+    <div className="h-screen flex flex-col bg-[#050505] text-white overflow-hidden font-sans selection:bg-primary/30">
+      <header className="h-16 border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 relative z-30 shadow-2xl">
+        <div className="flex items-center space-x-6 overflow-hidden">
+          <button onClick={() => navigate('/dashboard')} className="p-2.5 hover:bg-white/5 rounded-2xl text-gray-500 hover:text-white transition-all shrink-0 active:scale-90">
+            <ChevronLeft size={22} />
           </button>
-          <div className="flex items-center space-x-2 shrink-0">
-            <div className="w-6 h-6 bg-primary rounded-lg flex items-center justify-center text-black text-[10px] font-black">O</div>
-            <h2 className="font-display font-bold text-lg tracking-tighter">Onyx<span className="text-primary">GPT</span></h2>
+          <div className="flex items-center space-x-3 shrink-0">
+            <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-black text-xs font-black shadow-lg shadow-primary/20">O</div>
+            <h2 className="font-display font-bold text-xl tracking-tighter hidden sm:block">Onyx<span className="text-primary">GPT</span></h2>
           </div>
-          <div className="h-4 w-[1px] bg-white/10 mx-1 shrink-0"></div>
-          <div className="text-[10px] font-mono text-gray-500 bg-white/5 px-2 py-1 rounded-lg border border-white/5 truncate max-w-[200px]">
-            {project?.name || 'Initializing...'}
+          <div className="h-5 w-[1px] bg-white/10 mx-1 shrink-0"></div>
+          <div className="text-[10px] font-mono text-primary/80 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/20 truncate max-w-[250px] uppercase tracking-widest font-black">
+            {project?.name || 'INITIALIZING_NEURAL_LINK'}
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 shrink-0">
+        <div className="flex items-center space-x-4 shrink-0">
           {ghConnected && (
             <button
               onClick={handlePushToGitHub}
               disabled={isDeploying}
-              className="flex items-center space-x-2 px-4 py-1.5 bg-primary/10 border border-primary/20 hover:bg-primary/20 rounded-xl text-[10px] font-black text-primary uppercase tracking-widest transition-all disabled:opacity-50"
+              className="flex items-center space-x-2 px-5 py-2 bg-primary/10 border border-primary/20 hover:bg-primary/20 rounded-2xl text-[10px] font-black text-primary uppercase tracking-[0.15em] transition-all disabled:opacity-50 active:scale-95 shadow-lg shadow-primary/5"
             >
-              {isDeploying ? <Loader2 size={14} className="animate-spin" /> : <Github size={14} />}
-              <span className="hidden sm:inline">{isDeploying ? 'Syncing...' : 'Push to GitHub'}</span>
+              {isDeploying ? <Loader2 size={14} className="animate-spin" /> : <Github size={14} strokeWidth={3} />}
+              <span className="hidden md:inline">{isDeploying ? 'Syncing_Data' : 'Push to GitHub'}</span>
             </button>
           )}
+          <div className="h-6 w-[1px] bg-white/10 mx-2 hidden sm:block"></div>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="text-gray-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-xl"
+            className="text-gray-500 hover:text-white transition-colors p-2.5 hover:bg-white/5 rounded-2xl active:scale-90"
+            title="Agent Directives"
           >
-            <Settings size={18} />
+            <Settings size={20} />
           </button>
-          <button onClick={signOut} className="text-gray-500 hover:text-red-400 transition-colors p-2 hover:bg-red-400/5 rounded-xl">
-            <LogOut size={18} />
+          <button onClick={signOut} className="text-gray-500 hover:text-red-500 transition-colors p-2.5 hover:bg-red-500/5 rounded-2xl active:scale-90" title="Terminate Session">
+            <LogOut size={20} />
           </button>
         </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden">
-        <div className="w-16 border-r border-white/5 bg-[#0a0a0a] flex flex-col items-center py-6 space-y-6 shrink-0">
-          <AmenityButton active={activeAmenity === 'preview'} onClick={() => setActiveAmenity('preview')} icon={<Monitor size={20} />} label="Live Preview" />
-          <AmenityButton active={activeAmenity === 'terminal'} onClick={() => setActiveAmenity('terminal')} icon={<TerminalIcon size={20} />} label="Console" />
-          <AmenityButton active={activeAmenity === 'cloud'} onClick={() => setActiveAmenity('cloud')} icon={<Cloud size={20} />} label="Puter Resources" />
+        <div className="w-20 border-r border-white/5 bg-[#0a0a0a] flex flex-col items-center py-8 space-y-8 shrink-0 z-20">
+          <AmenityButton active={activeAmenity === 'preview'} onClick={() => setActiveAmenity('preview')} icon={<Monitor size={22} />} label="Live Output" />
+          <AmenityButton active={activeAmenity === 'terminal'} onClick={() => setActiveAmenity('terminal')} icon={<TerminalIcon size={22} />} label="Neural Console" />
+          <AmenityButton active={activeAmenity === 'cloud'} onClick={() => setActiveAmenity('cloud')} icon={<Cloud size={22} />} label="Puter Resources" />
           <div className="flex-1"></div>
-          <AmenityButton onClick={() => setIsSettingsOpen(true)} icon={<Layers size={20} />} label="Agent Settings" />
+          <AmenityButton onClick={() => setIsSettingsOpen(true)} icon={<Cpu size={22} />} label="Agent Configuration" />
+          <AmenityButton onClick={handleRefreshConsole} icon={<RefreshCcw size={20} />} label="Refresh Trace" />
         </div>
 
         <div className="flex-1 flex flex-col bg-[#050505] border-r border-white/5 relative overflow-hidden min-w-0">
+          {/* Internal Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/[0.02] blur-[150px] pointer-events-none"></div>
+
           {activeAmenity === 'preview' && (
-            <div className="h-full flex flex-col">
-              <div className="bg-[#0a0a0a] p-2 border-b border-white/5 flex items-center px-4 shrink-0 justify-between">
-                <div className="flex-1 max-w-xl bg-black border border-white/5 rounded-lg px-3 py-1 text-[10px] text-gray-500 font-mono overflow-hidden truncate">
-                  {previewUrl || 'waiting for internal network...'}
+            <div className="h-full flex flex-col animate-in fade-in duration-500">
+              <div className="bg-[#0a0a0a]/50 p-3 border-b border-white/5 flex items-center px-6 shrink-0 justify-between backdrop-blur-sm">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                   <div className="flex-1 max-w-2xl bg-black border border-white/5 rounded-xl px-4 py-1.5 text-[10px] text-gray-500 font-mono overflow-hidden truncate">
+                     {previewUrl || 'waiting_for_neural_network_broadcast...'}
+                   </div>
                 </div>
-                <button className="ml-4 p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-primary transition-all">
-                  <RefreshCcw size={14} />
+                <button
+                   onClick={() => { if(previewUrl) { const frame = document.getElementById('preview-frame'); if(frame) frame.src = frame.src; } }}
+                   className="ml-6 p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-primary transition-all active:rotate-180 duration-500"
+                >
+                  <RefreshCcw size={16} />
                 </button>
               </div>
               {previewUrl ? (
-                <iframe src={previewUrl} className="flex-1 w-full bg-white shadow-2xl" title="Live Preview" />
+                <iframe id="preview-frame" src={previewUrl} className="flex-1 w-full bg-white shadow-2xl" title="Live Preview" />
               ) : (
-                <div className="flex-1 flex items-center justify-center text-gray-600 flex-col space-y-6">
+                <div className="flex-1 flex items-center justify-center text-gray-600 flex-col space-y-8">
                   <div className="relative">
-                     <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse"></div>
-                     <Box size={64} className="relative text-primary/40 animate-bounce" />
+                     <div className="absolute inset-[-40px] bg-primary/20 blur-[80px] rounded-full animate-pulse"></div>
+                     <div className="w-24 h-24 bg-white/5 rounded-[2.5rem] border border-white/10 flex items-center justify-center relative">
+                        <Box size={40} className="text-primary/40 animate-bounce" />
+                     </div>
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-bold uppercase tracking-[0.2em]">Provisioning Runtime</p>
-                    <p className="text-[10px] text-gray-700 mt-1">WebContainer is booting in the background</p>
+                    <p className="text-sm font-black uppercase tracking-[0.4em] text-white">Neural Provisioning</p>
+                    <p className="text-[10px] text-gray-600 mt-2 font-mono uppercase tracking-widest">Isolated Runtime: WebContainer // Booting...</p>
                   </div>
                 </div>
               )}
@@ -305,38 +328,44 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           )}
 
           {activeAmenity === 'terminal' && (
-            <div className="h-full flex flex-col bg-[#050505] overflow-hidden">
-               <header className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                     <TerminalIcon size={14} className="text-primary" />
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">System Logs</span>
+            <div className="h-full flex flex-col bg-[#050505] overflow-hidden animate-in slide-in-from-left-4 duration-300">
+               <header className="px-8 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-primary/10 rounded-xl">
+                        <TerminalIcon size={16} className="text-primary" />
+                     </div>
+                     <div>
+                        <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Trace Terminal</span>
+                        <div className="text-[9px] text-gray-600 font-mono">kernel: v2.4.0-onyx</div>
+                     </div>
                   </div>
                   <button
-                    onClick={() => setLogs(['Terminal cleared by operator.'])}
-                    className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all"
+                    onClick={handleRefreshConsole}
+                    className="p-2.5 hover:bg-white/5 rounded-2xl text-gray-500 hover:text-white transition-all active:scale-90"
+                    title="Clear Trace"
                   >
-                    <RefreshCcw size={14} />
+                    <Trash2 size={18} />
                   </button>
                </header>
-               <div className="p-6 flex-1 font-mono text-[11px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/5 selection:bg-primary selection:text-black">
+               <div className="p-8 flex-1 font-mono text-[12px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/5 selection:bg-primary selection:text-black">
                   {logs.map((log, i) => (
-                    <div key={i} className="mb-1.5 leading-relaxed">
-                      <span className="text-primary/40 mr-3 select-none">➜</span>
-                      <span className="text-gray-400 whitespace-pre-wrap">{log}</span>
+                    <div key={i} className="mb-2 leading-relaxed flex items-start group">
+                      <span className="text-primary/30 mr-4 select-none mt-0.5 shrink-0">➜</span>
+                      <span className="text-gray-400 whitespace-pre-wrap break-all group-hover:text-gray-200 transition-colors">{log}</span>
                     </div>
                   ))}
-                  <div className="flex items-center mt-4">
-                    <span className="text-primary mr-3 font-black select-none">onyx-app $</span>
-                    <span className="w-2 h-4 bg-primary animate-pulse"></span>
+                  <div className="flex items-center mt-6">
+                    <span className="text-primary mr-4 font-black select-none tracking-tighter underline">onyx-app $</span>
+                    <span className="w-2.5 h-5 bg-primary animate-pulse shadow-[0_0_10px_rgba(0,228,204,0.8)]"></span>
                   </div>
                </div>
             </div>
           )}
 
-          {activeAmenity === 'cloud' && <CloudView />}
+          {activeAmenity === 'cloud' && <div className="h-full animate-in fade-in duration-300"><CloudView /></div>}
         </div>
 
-        <div className="w-[450px] flex flex-col bg-[#0a0a0a] shadow-[-20px_0_40px_rgba(0,0,0,0.5)] shrink-0 z-20">
+        <div className="w-[480px] flex flex-col bg-[#0a0a0a] shadow-[-30px_0_60px_rgba(0,0,0,0.8)] shrink-0 z-30 relative border-l border-white/5">
           <ChatPanel
             messages={messages}
             onSend={handleSendMessage}
@@ -365,14 +394,14 @@ function AmenityButton({ active, onClick, icon, label }) {
   return (
     <button
       onClick={onClick}
-      className={`p-3.5 rounded-2xl transition-all relative group ${
+      className={`p-4 rounded-2xl transition-all relative group ${
         active
-          ? 'bg-primary text-black shadow-[0_0_20px_rgba(0,228,204,0.3)] scale-110'
+          ? 'bg-primary text-black shadow-[0_0_25px_rgba(0,228,204,0.4)] scale-110'
           : 'text-gray-600 hover:text-white hover:bg-white/5'
       }`}
     >
-      {icon}
-      <div className="absolute left-[120%] ml-4 px-3 py-1.5 bg-[#111] border border-white/10 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-[100] shadow-2xl translate-x-[-10px] group-hover:translate-x-0">
+      <div className={`${active ? 'scale-110' : 'scale-100'} transition-transform`}>{icon}</div>
+      <div className="absolute left-[130%] ml-4 px-4 py-2 bg-[#111] border border-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-[100] shadow-2xl translate-x-[-15px] group-hover:translate-x-0">
         {label}
       </div>
     </button>
