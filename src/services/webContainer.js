@@ -4,29 +4,33 @@ import { WebContainer } from '@webcontainer/api';
  * Singleton WebContainer instance management.
  * We use window to persist across HMR and multiple module evaluations.
  */
+let bootLock = false;
+
 export async function getWebContainer() {
   if (window.__WEBCONTAINER_INSTANCE__) {
     return window.__WEBCONTAINER_INSTANCE__;
   }
 
   if (window.__WEBCONTAINER_PROMISE__) {
-    try {
-      return await window.__WEBCONTAINER_PROMISE__;
-    } catch (e) {
-      window.__WEBCONTAINER_PROMISE__ = null;
+    return window.__WEBCONTAINER_PROMISE__;
+  }
+
+  if (bootLock) {
+    // Wait for the other process to finish and set the promise
+    while (bootLock && !window.__WEBCONTAINER_PROMISE__) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
+    if (window.__WEBCONTAINER_PROMISE__) return window.__WEBCONTAINER_PROMISE__;
   }
 
+  bootLock = true;
   console.log("ONYX: Initializing WebContainer boot sequence...");
-
-  if (!window.crossOriginIsolated) {
-    console.error("ONYX: Environment is NOT cross-origin isolated. WebContainer will fail.");
-  }
 
   window.__WEBCONTAINER_PROMISE__ = (async () => {
     try {
-      // Small delay to prevent race conditions in fast HMR
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!window.crossOriginIsolated) {
+        console.warn("ONYX: Environment is NOT cross-origin isolated. Attempting boot anyway...");
+      }
 
       const instance = await WebContainer.boot();
       window.__WEBCONTAINER_INSTANCE__ = instance;
@@ -37,19 +41,21 @@ export async function getWebContainer() {
                              err.message.includes('Only a single WebContainer instance can be booted');
 
       if (isAlreadyBooted) {
-        console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        // We can't easily capture the existing instance if we lost the reference,
-        // but we can try to return what we have if it appeared in window meanwhile.
+        console.warn("ONYX: WebContainer already booted according to error message.");
         if (window.__WEBCONTAINER_INSTANCE__) return window.__WEBCONTAINER_INSTANCE__;
-        throw new Error("Unable to create more instances. WebContainer is restricted to one instance per tab. Please refresh.");
+        // If we still don't have it, we are in a broken state.
+        // We'll throw a friendly error but keep the promise so we don't spam boot().
+        throw new Error("WebContainer is already running in another part of the application. Please refresh to sync.");
       }
 
       if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
-        throw new Error("SharedArrayBuffer Error: Cross-Origin Isolation (COOP/COEP) headers are missing. This IDE requires a secure environment.");
+        throw new Error("SharedArrayBuffer Error: COOP/COEP headers are missing. Check your server configuration.");
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;
       throw err;
+    } finally {
+      bootLock = false;
     }
   })();
 

@@ -37,11 +37,14 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const [activeAmenity, setActiveAmenity] = useState('preview');
   const [messages, setMessages] = useState([]);
   const [todos, setTodos] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [appSettings, setAppSettings] = useState(() => {
     const saved = localStorage.getItem('onyx_settings');
     const defaultSettings = {
       customModelId: 'gpt-4o',
-      modelHistory: ['gpt-4o', 'gemini-2.0-flash', 'claude-3-5-sonnet']
+      modelHistory: ['gpt-4o', 'claude-3.5-sonnet', 'o1-mini']
     };
     return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
   });
@@ -59,8 +62,8 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const webContainerStarted = useRef(false);
 
   useEffect(() => {
-    setAppSettings(prev => ({ ...prev, customModelId: model }));
-  }, [model]);
+    setModel(appSettings.customModelId);
+  }, [appSettings.customModelId]);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -90,6 +93,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           addLog('Booting WebContainer...');
           await getWebContainer();
           addLog('WebContainer ready.');
+          refreshFiles();
         } catch (err) {
           addLog(`WebContainer Error: ${err.message}`);
         }
@@ -125,17 +129,52 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     setLogs(prev => [...prev, typeof log === 'string' ? log : JSON.stringify(log)]);
   };
 
+  const refreshFiles = async () => {
+    try {
+      const entries = await listFiles('/');
+      setFiles(entries);
+    } catch (err) {
+      console.error('Failed to list files', err);
+    }
+  };
+
   const refreshTerminal = async () => {
     setLogs(['Re-initializing terminal...', 'SharedArrayBuffer support verified.', 'User authenticated.']);
     try {
-      // Re-trigger WC boot if needed, but here we just reset logs and show current state
       const wc = await getWebContainer();
       addLog('WebContainer re-attached.');
-      // Try to list files to verify connection
-      const files = await listFiles('/');
-      addLog(`Root files: ${files.join(', ')}`);
+      const rootFiles = await listFiles('/');
+      addLog(`Root files: ${rootFiles.join(', ')}`);
+      refreshFiles();
     } catch (err) {
       addLog(`Refresh Error: ${err.message}`);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery) return;
+    setSearchResults(['Searching...']);
+    try {
+      const results = [];
+      const traverse = async (path) => {
+        const entries = await listFiles(path);
+        for (const entry of entries) {
+          if (['node_modules', '.git', 'dist'].includes(entry)) continue;
+          const fullPath = path === '/' ? `/${entry}` : `${path}/${entry}`;
+          try {
+            const content = await wcReadFile(fullPath);
+            if (content.toLowerCase().includes(searchQuery.toLowerCase())) {
+              results.push(fullPath);
+            }
+          } catch (e) {
+            await traverse(fullPath);
+          }
+        }
+      };
+      await traverse('/');
+      setSearchResults(results.length > 0 ? results : ['No results found.']);
+    } catch (err) {
+      setSearchResults([`Search error: ${err.message}`]);
     }
   };
 
@@ -178,6 +217,9 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             if (project) {
               saveProject({ ...project, todos: newTodos });
             }
+          },
+          onFilesUpdate: () => {
+            refreshFiles();
           },
           systemPrompt: PROMPTS[mode] || PROMPTS.execute,
           todos: todos
@@ -254,22 +296,13 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     localStorage.setItem('onyx_settings', JSON.stringify(appSettings));
   }, [appSettings]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="digital-glow p-12 bg-surface rounded-2xl border border-gray-800 max-w-md w-full">
-           <Box size={64} className="text-primary mx-auto mb-6 animate-pulse" />
-           <h1 className="text-3xl font-display font-bold mb-4 text-white">Project Isolated</h1>
-           <p className="text-gray-400 mb-8 leading-relaxed">
-             This workspace is encrypted and scoped to your Puter identity. Please sign in to resume.
-           </p>
-           <button onClick={signIn} className="w-full bg-primary text-background font-bold px-8 py-4 rounded-xl hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,228,204,0.3)]">
-             Sign In with Puter
-           </button>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!user && !loading) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
+
+  if (!user) return null;
 
   return (
     <div className="h-screen flex flex-col bg-background text-white overflow-hidden font-sans">
@@ -391,18 +424,55 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           )}
 
           {activeAmenity === 'files' && (
-            <div className="h-full flex flex-col bg-[#0a0a0a] p-8 items-center justify-center text-center">
-               <Files size={48} className="text-gray-800 mb-4" />
-               <h3 className="text-lg font-bold text-gray-400 mb-2">File Explorer</h3>
-               <p className="text-sm text-gray-600 max-w-xs">Viewing and editing files directly is coming in the next update. For now, use the chat to modify files.</p>
+            <div className="h-full flex flex-col bg-[#0a0a0a] overflow-hidden">
+               <div className="p-4 border-b border-gray-800 bg-background/50 flex justify-between items-center px-6">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Project Files</span>
+                  <button onClick={refreshFiles} className="text-gray-500 hover:text-primary transition-colors"><RefreshCw size={12} /></button>
+               </div>
+               <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                  {files.length > 0 ? files.map(f => (
+                    <div key={f} className="flex items-center space-x-2 p-2 hover:bg-white/5 rounded-lg cursor-pointer group transition-all">
+                       <FileCode size={14} className="text-primary/60" />
+                       <span className="text-xs text-gray-300 group-hover:text-white">{f}</span>
+                    </div>
+                  )) : (
+                    <div className="py-20 text-center">
+                       <Loader2 size={24} className="mx-auto text-gray-700 animate-spin mb-4" />
+                       <p className="text-xs text-gray-600 font-mono tracking-tighter">Indexing Filesystem...</p>
+                    </div>
+                  )}
+               </div>
             </div>
           )}
 
           {activeAmenity === 'search' && (
-            <div className="h-full flex flex-col bg-[#0a0a0a] p-8 items-center justify-center text-center">
-               <SearchIcon size={48} className="text-gray-800 mb-4" />
-               <h3 className="text-lg font-bold text-gray-400 mb-2">Search</h3>
-               <p className="text-sm text-gray-600 max-w-xs">Global search across your project files is currently indexed by Onyx AI.</p>
+            <div className="h-full flex flex-col bg-[#0a0a0a] overflow-hidden">
+               <div className="p-4 border-b border-gray-800 bg-background/50 px-6">
+                  <div className="relative">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                    <input
+                      type="text"
+                      placeholder="Search code..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                      className="w-full bg-background border border-gray-800 rounded-lg pl-9 pr-4 py-2 text-xs outline-none focus:border-primary transition-all font-mono"
+                    />
+                  </div>
+               </div>
+               <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {searchResults.map((res, i) => (
+                    <div key={i} className="p-2 border border-gray-800 rounded bg-background/30 text-[10px] font-mono text-gray-400 hover:border-primary/40 cursor-pointer truncate transition-all">
+                      {res}
+                    </div>
+                  ))}
+                  {searchResults.length === 0 && (
+                    <div className="py-20 text-center text-gray-600">
+                       <SearchIcon size={32} className="mx-auto mb-4 opacity-20" />
+                       <p className="text-[10px]">Search keywords within your project files.</p>
+                    </div>
+                  )}
+               </div>
             </div>
           )}
 

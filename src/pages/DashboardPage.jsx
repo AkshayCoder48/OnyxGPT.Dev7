@@ -33,13 +33,6 @@ export default function DashboardPage() {
   const [ghUser, setGhUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const templates = [
-    { id: 'react-basic', name: 'React Basic', description: 'Vite + React + Tailwind', icon: '⚛️' },
-    { id: 'nextjs-starter', name: 'Next.js Starter', description: 'Next.js + Tailwind', icon: '▲' },
-    { id: 'node-api', name: 'Node.js API', description: 'Express + Puter KV', icon: '🟢' },
-    { id: 'dashboard-ui', name: 'Modern Dashboard', description: 'React + Recharts + Tailwind', icon: '📊' },
-    { id: 'landing-page', name: 'SaaS Landing Page', description: 'React + Framer Motion', icon: '🚀' },
-  ];
 
   useEffect(() => {
     if (user) {
@@ -129,22 +122,13 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="digital-glow p-12 bg-surface rounded-2xl border border-gray-800 max-w-md w-full">
-           <Terminal size={64} className="text-primary mx-auto mb-6 animate-pulse" />
-           <h1 className="text-3xl font-display font-bold mb-4 text-white">Dashboard Locked</h1>
-           <p className="text-gray-400 mb-8 leading-relaxed">
-             Please sign in to access your projects and templates.
-           </p>
-           <button onClick={signIn} className="w-full bg-primary text-background font-bold px-8 py-4 rounded-xl hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,228,204,0.3)]">
-             Sign In with Puter
-           </button>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!user && !authLoading && !loading) {
+      navigate('/');
+    }
+  }, [user, authLoading, loading, navigate]);
+
+  if (!user) return null;
 
   const filteredProjects = projects.filter(p =>
     p?.name?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -174,12 +158,6 @@ export default function DashboardPage() {
             label="Projects"
           />
           <SidebarButton
-            active={activeTab === 'templates'}
-            onClick={() => setActiveTab('templates')}
-            icon={<Grid size={18} />}
-            label="Templates"
-          />
-          <SidebarButton
             active={activeTab === 'github'}
             onClick={() => setActiveTab('github')}
             icon={<Github size={18} />}
@@ -205,7 +183,6 @@ export default function DashboardPage() {
         <header className="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-surface/30 backdrop-blur-md sticky top-0 z-10">
           <h2 className="font-display font-bold text-xl uppercase tracking-widest text-gray-400">
             {activeTab === 'projects' && 'Your Projects'}
-            {activeTab === 'templates' && 'Starter Templates'}
             {activeTab === 'github' && 'GitHub Integration'}
           </h2>
 
@@ -250,24 +227,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {activeTab === 'templates' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map(template => (
-                <div
-                  key={template.id}
-                  onClick={() => handleCreateProject(template)}
-                  className="bg-surface border border-gray-800 rounded-2xl p-6 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer group"
-                >
-                  <div className="text-4xl mb-4">{template.icon}</div>
-                  <h3 className="font-bold text-lg mb-1">{template.name}</h3>
-                  <p className="text-sm text-gray-500 mb-4">{template.description}</p>
-                  <div className="flex items-center text-xs text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    Use Template <Plus size={12} className="ml-1" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
 
           {activeTab === 'github' && (
             <div className="max-w-2xl mx-auto bg-surface border border-gray-800 rounded-2xl p-12 text-center">

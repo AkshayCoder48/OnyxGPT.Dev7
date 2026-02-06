@@ -56,7 +56,7 @@ const LandingPage = () => {
           <div className="max-w-5xl mx-auto text-center relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-8 animate-pulse">
               <span className="w-2 h-2 rounded-full bg-primary"></span>
-              v2.0 Now Live - Powered by Gemini 2.0
+              v2.0 Now Live - The AI Native IDE
             </div>
             <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight leading-tight">
               Build the future <br />
@@ -178,9 +178,6 @@ const LandingPage = () => {
                 <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-2">What will you build?</h2>
                 <p className="text-onyx-text-muted">Explore the endless possibilities with OnyxGPT.</p>
               </div>
-              <button className="text-white border border-onyx-border hover:border-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
-                View Showcase
-              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
@@ -206,7 +203,7 @@ const LandingPage = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-background-dark to-[#0f1f1d]"></div>
           <div className="max-w-4xl mx-auto relative z-10 text-center">
             <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-6">Ready to code at the speed of thought?</h2>
-            <p className="text-xl text-onyx-text-muted mb-10">Join 10,000+ developers building the future with OnyxGPT.</p>
+            <p className="text-xl text-onyx-text-muted mb-10">Join thousands of developers building the future with OnyxGPT.</p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300">
                 Start Building for Free

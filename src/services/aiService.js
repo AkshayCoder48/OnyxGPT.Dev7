@@ -142,6 +142,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
   ];
 
   const modelToUse = options.customModelId || options.model;
+  let finalAssistantMessage = { role: 'assistant', content: '', toolCalls: [] };
 
   while (true) {
     const response = await window.puter.ai.chat(currentMessages, {
@@ -150,22 +151,25 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       stream: true
     });
 
-    let assistantMessage = { role: 'assistant', content: '', toolCalls: [] };
+    let currentIterationMessage = { role: 'assistant', content: '', toolCalls: [] };
     let toolCall = null;
 
     for await (const part of response) {
       if (part.type === 'text') {
-        assistantMessage.content += part.text;
-        onUpdate({ ...assistantMessage });
+        currentIterationMessage.content += part.text;
+        finalAssistantMessage.content += part.text;
+        onUpdate({ ...finalAssistantMessage });
       } else if (part.type === 'tool_use') {
         toolCall = part;
-        assistantMessage.toolCalls.push({
+        const tc = {
           id: toolCall.id,
           name: toolCall.name,
           input: toolCall.input,
           status: 'running'
-        });
-        onUpdate({ ...assistantMessage });
+        };
+        currentIterationMessage.toolCalls.push(tc);
+        finalAssistantMessage.toolCalls.push(tc);
+        onUpdate({ ...finalAssistantMessage });
       }
     }
 
@@ -180,6 +184,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         onLog(`onyx-app $ write ${args.path}`);
         await wc.writeFile(args.path, args.contents);
         result = `File written to ${args.path}.`;
+        if (options.onFilesUpdate) options.onFilesUpdate();
       } else if (toolCall.name === 'runCommand') {
         const fullCmd = `${args.command} ${args.args.join(' ')}`;
         onLog(`onyx-app $ ${fullCmd}`);
@@ -220,11 +225,11 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       onLog(result);
     }
 
-    const tcIndex = assistantMessage.toolCalls.findIndex(tc => tc.id === toolCall.id);
+    const tcIndex = finalAssistantMessage.toolCalls.findIndex(tc => tc.id === toolCall.id);
     if (tcIndex !== -1) {
-      assistantMessage.toolCalls[tcIndex].status = status;
-      assistantMessage.toolCalls[tcIndex].result = result;
-      onUpdate({ ...assistantMessage });
+      finalAssistantMessage.toolCalls[tcIndex].status = status;
+      finalAssistantMessage.toolCalls[tcIndex].result = result;
+      onUpdate({ ...finalAssistantMessage });
     }
 
     currentMessages.push({
