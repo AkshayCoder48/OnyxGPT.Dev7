@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const LandingPage = () => {
-  const { user, signIn: login, signOut: logout } = useAuth();
+  const { user, loading, signIn: login, signOut: logout } = useAuth();
   const navigate = useNavigate();
 
   const handleStartBuilding = async () => {
     if (!user) {
-      await login();
+      const userData = await login();
+      if (userData) navigate('/dashboard');
+    } else {
+      navigate('/dashboard');
     }
-    navigate('/workspace/new');
   };
 
   return (
@@ -25,12 +27,13 @@ const LandingPage = () => {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-onyx-text-muted">
             <a href="#features" className="hover:text-primary transition-colors">Features</a>
             <a href="#showcase" className="hover:text-primary transition-colors">Showcase</a>
-            <a href="#" className="hover:text-primary transition-colors">Docs</a>
           </div>
           <div className="flex items-center gap-4">
-            {user ? (
+            {loading ? (
+              <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+            ) : user ? (
               <>
-                <button onClick={() => navigate('/workspace/new')} className="text-sm font-bold hover:text-primary transition-colors">My Projects</button>
+                <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors">Go to Dashboard</button>
                 <button onClick={logout} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all">Logout</button>
               </>
             ) : (
@@ -48,7 +51,6 @@ const LandingPage = () => {
       <main>
         {/* Hero Section */}
         <section className="relative pt-32 pb-20 px-6 overflow-hidden">
-          {/* Background Glows */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
           <div className="absolute top-40 left-1/4 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none"></div>
 
@@ -69,9 +71,6 @@ const LandingPage = () => {
                 Start Building for Free
                 <span className="material-symbols-outlined">arrow_forward</span>
               </button>
-              <button className="bg-transparent border border-onyx-border hover:border-white text-white px-8 py-4 rounded-lg text-lg font-bold transition-all">
-                View Demo
-              </button>
             </div>
 
             {/* Mock IDE Preview */}
@@ -90,7 +89,7 @@ const LandingPage = () => {
                   </div>
                 </div>
                 <div className="flex h-full">
-                  <div className="w-1/4 border-r border-onyx-border bg-[#121212] p-4 hidden md:block">
+                  <div className="w-1/4 border-r border-onyx-border bg-[#121212] p-4 hidden md:block text-left">
                     <div className="flex flex-col gap-4">
                       <div className="h-4 w-3/4 bg-white/5 rounded"></div>
                       <div className="h-4 w-1/2 bg-white/5 rounded"></div>
@@ -98,23 +97,16 @@ const LandingPage = () => {
                       <div className="mt-8 h-4 w-full bg-primary/10 rounded"></div>
                     </div>
                   </div>
-                  <div className="flex-1 bg-black p-6 flex flex-col">
-                    <div className="flex items-start gap-4 mb-6">
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-primary text-sm">robot_2</span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-4 w-1/3 bg-primary/20 rounded mb-2"></div>
-                        <div className="h-4 w-full bg-white/5 rounded mb-2"></div>
-                        <div className="h-4 w-2/3 bg-white/5 rounded"></div>
-                      </div>
-                    </div>
-                    <div className="mt-auto bg-[#111] border border-white/5 rounded-lg p-4 flex items-center gap-3">
-                      <div className="flex-1 h-4 bg-white/5 rounded"></div>
-                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                        <span className="material-symbols-outlined text-background-dark text-sm">send</span>
-                      </div>
-                    </div>
+                  <div className="flex-1 p-6 font-mono text-left">
+                     <div className="flex items-center gap-2 text-primary mb-4">
+                        <span className="material-symbols-outlined text-sm">terminal</span>
+                        <span className="text-xs">Terminal</span>
+                     </div>
+                     <div className="space-y-2">
+                        <div className="text-xs text-gray-500">➜ npm run dev</div>
+                        <div className="text-xs text-green-500">✔ Vite server started on :3000</div>
+                        <div className="text-xs text-gray-300 animate-pulse">_</div>
+                     </div>
                   </div>
                 </div>
               </div>
@@ -123,15 +115,9 @@ const LandingPage = () => {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-24 px-6 border-y border-onyx-border">
+        <section id="features" className="py-24 px-6 relative">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">Engineered for Builders</h2>
-              <p className="text-onyx-text-muted">Everything you need to go from zero to one.</p>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Feature 1 */}
               <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
                 <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
@@ -147,7 +133,6 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              {/* Feature 2 */}
               <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
                 <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
@@ -167,7 +152,6 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              {/* Feature 3 */}
               <div className="group bg-onyx-card border border-onyx-border hover:border-primary/50 rounded-xl p-8 transition-all duration-300 hover:shadow-glow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
                 <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mb-6 text-primary border border-white/5">
@@ -227,9 +211,6 @@ const LandingPage = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300">
                 Start Building for Free
-              </button>
-              <button className="bg-transparent border border-onyx-border hover:border-white text-white px-8 py-4 rounded-lg text-lg font-bold transition-all">
-                Read Documentation
               </button>
             </div>
           </div>

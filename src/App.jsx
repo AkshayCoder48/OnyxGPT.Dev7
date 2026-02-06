@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import WorkspacePage from './pages/WorkspacePage';
+import DashboardPage from './pages/DashboardPage';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/workspace/:code" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
         <Route path="/workspace" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
       </Routes>

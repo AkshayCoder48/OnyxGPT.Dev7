@@ -77,3 +77,32 @@ export async function clearProjectMessages(projectId) {
         console.error('Error clearing messages:', error);
     }
 }
+
+// GitHub Token storage
+export async function saveGitHubToken(token) {
+  if (!window.puter) return;
+  await window.puter.kv.set('github_token', token);
+}
+
+export async function getGitHubToken() {
+  if (!window.puter) return null;
+  return await window.puter.kv.get('github_token');
+}
+
+export async function deleteGitHubToken() {
+  if (!window.puter) return;
+  await window.puter.kv.del('github_token');
+}
+
+// Overwrite all messages for a project (more robust for complex conversations)
+export async function saveMessages(projectId, messages) {
+  if (!window.puter) return { error: 'Puter not initialized' };
+  try {
+    const key = `chat_${projectId}`;
+    await window.puter.kv.set(key, JSON.stringify(messages));
+    return { data: messages };
+  } catch (error) {
+    console.error('Error saving messages:', error);
+    return { error };
+  }
+}
