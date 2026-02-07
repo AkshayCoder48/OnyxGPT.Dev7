@@ -152,7 +152,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
     });
 
     let currentIterationMessage = { role: 'assistant', content: '', toolCalls: [] };
-    let toolCall = null;
+    let iterationToolCalls = [];
 
     for await (const part of response) {
       if (part.type === 'text') {
@@ -160,11 +160,11 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         finalAssistantMessage.content += part.text;
         onUpdate({ ...finalAssistantMessage });
       } else if (part.type === 'tool_use') {
-        toolCall = part;
+        iterationToolCalls.push(part);
         const tc = {
-          id: toolCall.id,
-          name: toolCall.name,
-          input: toolCall.input,
+          id: part.id,
+          name: part.name,
+          input: part.input,
           status: 'running'
         };
         currentIterationMessage.toolCalls.push(tc);
@@ -175,78 +175,81 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
 
     // Push the assistant's turn (text and/or tool calls) to history
     const historyEntry = { role: 'assistant', content: currentIterationMessage.content || '' };
-    if (toolCall) {
-      historyEntry.tool_calls = [{
-        id: toolCall.id,
+    if (iterationToolCalls.length > 0) {
+      historyEntry.tool_calls = iterationToolCalls.map(tc => ({
+        id: tc.id,
         type: 'function',
-        function: { name: toolCall.name, arguments: JSON.stringify(toolCall.input) }
-      }];
+        function: { name: tc.name, arguments: JSON.stringify(tc.input) }
+      }));
     }
     currentMessages.push(historyEntry);
 
-    if (!toolCall) break;
+    if (iterationToolCalls.length === 0) break;
 
-    let result;
-    let status = 'success';
-    const args = toolCall.input;
+    // Execute all tool calls in this turn
+    for (const toolCall of iterationToolCalls) {
+      let result;
+      let status = 'success';
+      const args = toolCall.input;
 
-    try {
-      if (toolCall.name === 'writeFile') {
-        onLog(`onyx-app $ write ${args.path}`);
-        await wc.writeFile(args.path, args.contents);
-        result = `File written to ${args.path}.`;
-        if (options.onFilesUpdate) options.onFilesUpdate();
-      } else if (toolCall.name === 'runCommand') {
-        const fullCmd = `${args.command} ${args.args.join(' ')}`;
-        onLog(`onyx-app $ ${fullCmd}`);
+      try {
+        if (toolCall.name === 'writeFile') {
+          onLog(`onyx-app $ write ${args.path}`);
+          await wc.writeFile(args.path, args.contents);
+          result = `File written to ${args.path}.`;
+          if (options.onFilesUpdate) options.onFilesUpdate();
+        } else if (toolCall.name === 'runCommand') {
+          const fullCmd = `${args.command} ${args.args.join(' ')}`;
+          onLog(`onyx-app $ ${fullCmd}`);
 
-        if (args.command === 'npm' && args.args.includes('dev')) {
-          wc.runCommand(args.command, args.args, (data) => {
-            onLog(data);
-            const match = data.match(/http:\/\/localhost:\d+/);
-            if (match) options.onUrlReady(match[0]);
-          });
-          result = "Development server started.";
-        } else {
-          const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
-          result = `Command finished with exit code ${exitCode}.`;
-          if (exitCode !== 0) status = 'error';
+          if (args.command === 'npm' && args.args.includes('dev')) {
+            wc.runCommand(args.command, args.args, (data) => {
+              onLog(data);
+              const match = data.match(/http:\/\/localhost:\d+/);
+              if (match) options.onUrlReady(match[0]);
+            });
+            result = "Development server started.";
+          } else {
+            const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
+            result = `Command finished with exit code ${exitCode}.`;
+            if (exitCode !== 0) status = 'error';
+          }
+        } else if (toolCall.name === 'kvSet') {
+          onLog(`onyx-app $ kv set ${args.key}`);
+          await window.puter.kv.set(args.key, args.value);
+          result = "Value saved to Puter KV.";
+        } else if (toolCall.name === 'kvGet') {
+          onLog(`onyx-app $ kv get ${args.key}`);
+          const val = await window.puter.kv.get(args.key);
+          result = JSON.stringify(val);
+        } else if (toolCall.name === 'fsWrite') {
+          onLog(`onyx-app $ cloud-fs write ${args.path}`);
+          await window.puter.fs.write(args.path, args.contents);
+          result = "File written to Puter Cloud FS.";
+        } else if (toolCall.name === 'updateTodos') {
+          if (options.onTodosUpdate) {
+            options.onTodosUpdate(args.todos);
+          }
+          result = "TODO list updated.";
         }
-      } else if (toolCall.name === 'kvSet') {
-        onLog(`onyx-app $ kv set ${args.key}`);
-        await window.puter.kv.set(args.key, args.value);
-        result = "Value saved to Puter KV.";
-      } else if (toolCall.name === 'kvGet') {
-        onLog(`onyx-app $ kv get ${args.key}`);
-        const val = await window.puter.kv.get(args.key);
-        result = JSON.stringify(val);
-      } else if (toolCall.name === 'fsWrite') {
-        onLog(`onyx-app $ cloud-fs write ${args.path}`);
-        await window.puter.fs.write(args.path, args.contents);
-        result = "File written to Puter Cloud FS.";
-      } else if (toolCall.name === 'updateTodos') {
-        if (options.onTodosUpdate) {
-          options.onTodosUpdate(args.todos);
-        }
-        result = "TODO list updated.";
+      } catch (err) {
+        status = 'error';
+        result = "Error: " + err.message;
+        onLog(result);
       }
-    } catch (err) {
-      status = 'error';
-      result = "Error: " + err.message;
-      onLog(result);
-    }
 
-    const tcIndex = finalAssistantMessage.toolCalls.findIndex(tc => tc.id === toolCall.id);
-    if (tcIndex !== -1) {
-      finalAssistantMessage.toolCalls[tcIndex].status = status;
-      finalAssistantMessage.toolCalls[tcIndex].result = result;
-      onUpdate({ ...finalAssistantMessage });
-    }
+      const tcIndex = finalAssistantMessage.toolCalls.findIndex(tc => tc.id === toolCall.id);
+      if (tcIndex !== -1) {
+        finalAssistantMessage.toolCalls[tcIndex].status = status;
+        finalAssistantMessage.toolCalls[tcIndex].result = result;
+        onUpdate({ ...finalAssistantMessage });
+      }
 
-    currentMessages.push({
-      role: 'tool',
-      tool_call_id: toolCall.id,
-      content: result
-    });
+      currentMessages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: result
+      });
+    }
   }
 }

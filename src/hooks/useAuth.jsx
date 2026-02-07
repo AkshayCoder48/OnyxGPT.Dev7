@@ -24,7 +24,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    checkAuth();
+    let mounted = true;
+    const init = async () => {
+      // Wait for Puter.js to be available (max 5s)
+      for (let i = 0; i < 50; i++) {
+        if (window.puter) break;
+        await new Promise(r => setTimeout(r, 100));
+      }
+      if (mounted) checkAuth();
+    };
+    init();
+    return () => { mounted = false; };
   }, [checkAuth]);
 
   const signIn = async () => {
