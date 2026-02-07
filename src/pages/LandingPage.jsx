@@ -94,11 +94,20 @@ const LandingPage = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16 relative z-30">
               <button
                 onClick={handleStartBuilding}
-                disabled={isSigningIn}
-                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={isSigningIn || loading}
+                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed min-w-[240px]"
               >
-                {isSigningIn ? 'Connecting...' : 'Start Building for Free'}
-                {!isSigningIn && <span className="material-symbols-outlined">bolt</span>}
+                {isSigningIn || loading ? (
+                  <>
+                    <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
+                    <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Start Building for Free</span>
+                    <span className="material-symbols-outlined">bolt</span>
+                  </>
+                )}
               </button>
             </div>
 
@@ -241,10 +250,15 @@ const LandingPage = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
                 onClick={handleStartBuilding}
-                disabled={isSigningIn}
-                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-70"
+                disabled={isSigningIn || loading}
+                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-70 min-w-[240px] flex items-center justify-center gap-2"
               >
-                {isSigningIn ? 'Connecting...' : 'Start Building for Free'}
+                {isSigningIn || loading ? (
+                   <>
+                    <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
+                    <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
+                  </>
+                ) : 'Start Building for Free'}
               </button>
             </div>
           </div>

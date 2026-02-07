@@ -26,9 +26,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
     const init = async () => {
-      // Wait for Puter.js to be available (max 5s)
-      for (let i = 0; i < 50; i++) {
-        if (window.puter) break;
+      // Wait for Puter.js to be available (max 10s, but checking frequently)
+      for (let i = 0; i < 100; i++) {
+        if (window.puter) {
+          console.log("ONYX: Puter.js detected after", i * 100, "ms");
+          break;
+        }
         await new Promise(r => setTimeout(r, 100));
       }
       if (mounted) checkAuth();
@@ -39,9 +42,19 @@ export function AuthProvider({ children }) {
 
   const signIn = async () => {
     console.log("ONYX: Auth.signIn requested");
+
+    // Wait for Puter to be ready if it isn't yet
     if (!window.puter) {
-      console.error("ONYX: Puter.js is not available in window.");
-      alert("Puter.js is still loading. Please try again in a second.");
+      console.warn("ONYX: Puter.js not ready, waiting...");
+      for (let i = 0; i < 20; i++) {
+        if (window.puter) break;
+        await new Promise(r => setTimeout(r, 100));
+      }
+    }
+
+    if (!window.puter) {
+      console.error("ONYX: Puter.js failed to load after timeout.");
+      alert("Onyx is having trouble connecting to Puter Cloud. Please refresh the page.");
       return;
     }
 
