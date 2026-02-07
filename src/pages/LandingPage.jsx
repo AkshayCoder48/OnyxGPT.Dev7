@@ -13,15 +13,20 @@ const LandingPage = () => {
     }
   }, [user, loading, navigate]);
 
+  const [isSigningIn, setIsSigningIn] = React.useState(false);
+
   const handleStartBuilding = async () => {
     console.log("ONYX: Start building clicked. User status:", !!user);
     if (!user) {
       try {
+        setIsSigningIn(true);
         console.log("ONYX: Initiating Puter sign-in...");
         await login();
         // Redirect will be handled by useEffect [user]
       } catch (err) {
         console.error("ONYX: Sign-in error:", err);
+      } finally {
+        setIsSigningIn(false);
       }
     } else {
       console.log("ONYX: User already logged in. Navigating to dashboard...");
@@ -30,9 +35,15 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background-dark text-white font-sans selection:bg-primary/30">
+    <div className="min-h-screen bg-background-dark text-white font-sans selection:bg-primary/30 relative">
+      {/* Background Blobs - Global and strictly behind */}
+      <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-primary/5 blur-[120px] rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-64 h-64 bg-primary/10 blur-[80px] rounded-full"></div>
+      </div>
+
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md border-b border-onyx-border px-6 py-4">
+      <nav className="fixed top-0 left-0 right-0 z-[100] bg-background-dark/80 backdrop-blur-md border-b border-onyx-border px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-3xl">terminal</span>
@@ -43,30 +54,31 @@ const LandingPage = () => {
             <a href="#showcase" className="hover:text-primary transition-colors">Showcase</a>
           </div>
           <div className="flex items-center gap-4">
-            {loading ? (
-              <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+            {loading || isSigningIn ? (
+              <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
+                <div className="w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+                <span>Syncing</span>
+              </div>
             ) : user ? (
               <>
-                <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors">Go to Dashboard</button>
-                <button onClick={logout} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all">Logout</button>
+                <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors cursor-pointer">Go to Dashboard</button>
+                <button onClick={logout} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all cursor-pointer">Logout</button>
               </>
             ) : (
-              <>
-                <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300">
-                  Get Started
-                </button>
-              </>
+              <button
+                onClick={handleStartBuilding}
+                className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95"
+              >
+                Get Started
+              </button>
             )}
           </div>
         </div>
       </nav>
 
-      <main>
+      <main className="relative z-10">
         {/* Hero Section */}
-        <section className="relative pt-32 pb-20 px-6 overflow-hidden z-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
-          <div className="absolute top-40 left-1/4 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none -z-10"></div>
-
+        <section className="relative pt-32 pb-20 px-6 overflow-hidden">
           <div className="max-w-5xl mx-auto text-center relative z-20">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-8 animate-pulse">
               <span className="w-2 h-2 rounded-full bg-primary"></span>
@@ -79,10 +91,14 @@ const LandingPage = () => {
             <p className="text-xl text-onyx-text-muted mb-10 max-w-2xl mx-auto leading-relaxed">
               The world's first AI-native IDE that turns your ideas into full-stack applications in seconds. No setup, no boilerplate, just pure creation.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
-              <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2">
-                Start Building for Free
-                <span className="material-symbols-outlined">bolt</span>
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16 relative z-30">
+              <button
+                onClick={handleStartBuilding}
+                disabled={isSigningIn}
+                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isSigningIn ? 'Connecting...' : 'Start Building for Free'}
+                {!isSigningIn && <span className="material-symbols-outlined">bolt</span>}
               </button>
             </div>
 
@@ -217,14 +233,18 @@ const LandingPage = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-24 px-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-background-dark to-[#0f1f1d]"></div>
+        <section className="py-24 px-6 relative overflow-hidden z-10">
+          <div className="absolute inset-0 bg-gradient-to-b from-background-dark to-[#0f1f1d] z-0"></div>
           <div className="max-w-4xl mx-auto relative z-10 text-center">
             <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-6">Ready to code at the speed of thought?</h2>
             <p className="text-xl text-onyx-text-muted mb-10">Join thousands of developers building the future with OnyxGPT.</p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button onClick={handleStartBuilding} className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300">
-                Start Building for Free
+              <button
+                onClick={handleStartBuilding}
+                disabled={isSigningIn}
+                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-70"
+              >
+                {isSigningIn ? 'Connecting...' : 'Start Building for Free'}
               </button>
             </div>
           </div>
