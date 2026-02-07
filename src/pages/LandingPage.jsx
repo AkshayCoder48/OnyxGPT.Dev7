@@ -7,6 +7,7 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  // Auto-redirect if already logged in
   useEffect(() => {
     if (user && !loading) {
       console.log("ONYX: User authenticated, redirecting to dashboard...");
@@ -17,18 +18,19 @@ const LandingPage = () => {
   const handleStartBuilding = async (e) => {
     if (e) e.preventDefault();
 
-    // Most direct path to signIn to avoid popup blocking
+    if (user) {
+      navigate('/dashboard');
+      return;
+    }
+
+    setIsSigningIn(true);
     try {
-      if (!user) {
-        setIsSigningIn(true);
-        await signIn();
-      }
+      // Call signIn - this triggers the popup
+      await signIn();
+      // If successful, navigate
       navigate('/dashboard');
     } catch (err) {
       console.error("ONYX: Sign-in error:", err);
-      // We don't alert here to avoid disrupting the UI,
-      // the error is already handled/shown via the AuthProvider's error state if needed
-    } finally {
       setIsSigningIn(false);
     }
   };
@@ -69,8 +71,12 @@ const LandingPage = () => {
                 onClick={handleStartBuilding}
                 className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2"
               >
-                {isSigningIn && <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>}
-                <span>Start Building Today</span>
+                {isSigningIn ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
+                    <span>Connecting...</span>
+                  </div>
+                ) : 'Start Building Today'}
               </button>
             )}
           </div>
@@ -101,7 +107,7 @@ const LandingPage = () => {
                   {isSigningIn ? (
                     <>
                       <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                      <span>Starting...</span>
+                      <span>Connecting...</span>
                     </>
                   ) : (
                     <>
@@ -269,8 +275,12 @@ const LandingPage = () => {
                   onClick={handleStartBuilding}
                   className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 min-w-[240px] flex items-center justify-center gap-2"
                 >
-                  {isSigningIn && <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>}
-                  <span>Start Building Today</span>
+                  {isSigningIn ? (
+                    <>
+                      <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
+                      <span>Connecting...</span>
+                    </>
+                  ) : 'Start Building Today'}
                 </button>
                 {error && (
                    <div className="flex flex-col items-center gap-1">

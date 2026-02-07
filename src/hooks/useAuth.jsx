@@ -57,8 +57,18 @@ export function AuthProvider({ children }) {
   const signIn = async () => {
     console.log("ONYX: puter.auth.signIn() invoked");
 
+    // Quick polling to catch Puter if it's almost ready
     if (!window.puter || !window.puter.auth) {
-      throw new Error("Puter.js not loaded yet. Please wait a moment.");
+      for (let i = 0; i < 40; i++) { // Wait up to 2 seconds (40 * 50ms)
+        if (window.puter && window.puter.auth) break;
+        await new Promise(r => setTimeout(r, 50));
+      }
+    }
+
+    if (!window.puter || !window.puter.auth) {
+      const msg = "Puter.js not loaded. Please refresh the page or check your connection.";
+      setError(msg);
+      throw new Error(msg);
     }
 
     try {
@@ -70,6 +80,8 @@ export function AuthProvider({ children }) {
       // Update local user state
       const userData = await window.puter.auth.getUser();
       setUser(userData);
+
+      // Force loading to false immediately after success
       setLoading(false);
 
       return res;

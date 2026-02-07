@@ -114,10 +114,6 @@ export default function ChatPanel({
                 <span>{model}</span>
              </div>
           </div>
-          <div className="flex items-center space-x-1">
-             <IconButton icon={<RotateCcw size={14} />} onClick={onUndo} title="Undo last message" />
-             <IconButton icon={<Paperclip size={14} />} onClick={onAttachContext} title="Attach context" />
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="relative group">
