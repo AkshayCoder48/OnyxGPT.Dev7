@@ -38,18 +38,34 @@ export function AuthProvider({ children }) {
   }, [checkAuth]);
 
   const signIn = async () => {
+    console.log("ONYX: Auth.signIn requested");
     if (!window.puter) {
-      console.error("ONYX: Puter.js not loaded yet.");
+      console.error("ONYX: Puter.js is not available in window.");
+      alert("Puter.js is still loading. Please try again in a second.");
       return;
     }
+
     try {
-      console.log("ONYX: Calling puter.auth.signIn()...");
+      console.log("ONYX: Calling window.puter.auth.signIn()...");
+      // Some browsers block popups if not a direct result of user interaction.
+      // We ensure this is called within the same stack as the click.
       const userData = await window.puter.auth.signIn();
-      console.log("ONYX: puter.auth.signIn() resolved with:", userData);
-      setUser(userData);
-      return userData;
+
+      if (userData) {
+        console.log("ONYX: Sign-in successful:", userData.username);
+        setUser(userData);
+        return userData;
+      } else {
+        console.warn("ONYX: Sign-in resolved but no user data returned.");
+        // Re-check auth state as a fallback
+        await checkAuth();
+      }
     } catch (err) {
-      console.error('Sign in failed:', err);
+      console.error('ONYX: Sign in failed error:', err);
+      // If it's a popup blocked error, we might want to inform the user
+      if (err.message && (err.message.includes('popup') || err.message.includes('blocked'))) {
+        alert("Sign-in popup was blocked. Please allow popups for this site.");
+      }
       throw err;
     }
   };

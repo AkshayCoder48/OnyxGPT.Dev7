@@ -4,6 +4,15 @@ import { X, Cpu, Info } from 'lucide-react';
 export default function SettingsModal({ isOpen, onClose, settings, setSettings }) {
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    // Save to history if not already there
+    if (settings.customModelId && !settings.modelHistory.includes(settings.customModelId)) {
+      const newHistory = [settings.customModelId, ...settings.modelHistory].slice(0, 10);
+      setSettings({ ...settings, modelHistory: newHistory });
+    }
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-surface border border-gray-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -12,7 +21,7 @@ export default function SettingsModal({ isOpen, onClose, settings, setSettings }
             <Cpu size={18} className="text-primary" />
             <h2 className="font-display font-bold text-lg">Agent Settings</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+          <button onClick={handleClose} className="text-gray-500 hover:text-white transition-colors">
             <X size={20} />
           </button>
         </header>
@@ -62,7 +71,7 @@ export default function SettingsModal({ isOpen, onClose, settings, setSettings }
         </div>
 
         <footer className="px-6 py-4 bg-background/50 border-t border-gray-800 flex justify-end space-x-3">
-          <button onClick={onClose} className="px-6 py-2 bg-primary text-background font-bold rounded-lg text-sm hover:brightness-110 transition-all shadow-[0_0_15px_rgba(0,228,204,0.3)]">
+          <button onClick={handleClose} className="px-6 py-2 bg-primary text-background font-bold rounded-lg text-sm hover:brightness-110 transition-all shadow-[0_0_15px_rgba(0,228,204,0.3)]">
             Close
           </button>
         </footer>

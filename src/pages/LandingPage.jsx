@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const LandingPage = () => {
-  const { user, loading, signIn: login, signOut: logout } = useAuth();
+  const { user, loading, signIn, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   useEffect(() => {
     if (user && !loading) {
@@ -13,24 +14,23 @@ const LandingPage = () => {
     }
   }, [user, loading, navigate]);
 
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const handleStartBuilding = async (e) => {
+    if (e) e.preventDefault();
+    console.log("ONYX: handleStartBuilding invoked. user:", !!user);
 
-  const handleStartBuilding = async () => {
-    console.log("ONYX: Start building clicked. User status:", !!user);
-    if (!user) {
-      try {
-        setIsSigningIn(true);
-        console.log("ONYX: Initiating Puter sign-in...");
-        await login();
-        // Redirect will be handled by useEffect [user]
-      } catch (err) {
-        console.error("ONYX: Sign-in error:", err);
-      } finally {
-        setIsSigningIn(false);
-      }
-    } else {
-      console.log("ONYX: User already logged in. Navigating to dashboard...");
+    if (user) {
       navigate('/dashboard');
+      return;
+    }
+
+    try {
+      setIsSigningIn(true);
+      console.log("ONYX: Calling signIn from context...");
+      await signIn();
+    } catch (err) {
+      console.error("ONYX: handleStartBuilding error:", err);
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -62,7 +62,7 @@ const LandingPage = () => {
             ) : user ? (
               <>
                 <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors cursor-pointer">Go to Dashboard</button>
-                <button onClick={logout} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all cursor-pointer">Logout</button>
+                <button onClick={signOut} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all cursor-pointer">Logout</button>
               </>
             ) : (
               <button
