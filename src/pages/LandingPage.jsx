@@ -16,19 +16,18 @@ const LandingPage = () => {
 
   const handleStartBuilding = async (e) => {
     if (e) e.preventDefault();
-    console.log("ONYX: handleStartBuilding invoked. user:", !!user);
 
-    if (user) {
-      navigate('/dashboard');
-      return;
-    }
-
+    // Most direct path to signIn to avoid popup blocking
     try {
-      setIsSigningIn(true);
-      console.log("ONYX: Calling signIn from context...");
-      await signIn();
+      if (!user) {
+        setIsSigningIn(true);
+        await signIn();
+      }
+      navigate('/dashboard');
     } catch (err) {
-      console.error("ONYX: handleStartBuilding error:", err);
+      console.error("ONYX: Sign-in error:", err);
+      // We don't alert here to avoid disrupting the UI,
+      // the error is already handled/shown via the AuthProvider's error state if needed
     } finally {
       setIsSigningIn(false);
     }

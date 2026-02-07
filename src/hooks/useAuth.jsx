@@ -55,60 +55,39 @@ export function AuthProvider({ children }) {
   }, [init]);
 
   const signIn = async () => {
-    console.log("ONYX: Auth.signIn requested");
+    console.log("ONYX: puter.auth.signIn() invoked");
 
     if (!window.puter || !window.puter.auth) {
-      // Very aggressive polling to catch Puter as soon as it loads (up to 10s)
-      for (let i = 0; i < 200; i++) {
-        if (window.puter && window.puter.auth) break;
-        await new Promise(r => setTimeout(r, 50));
-      }
-    }
-
-    if (!window.puter || !window.puter.auth) {
-      const errMsg = "Onyx cannot connect to Puter Cloud. Please check your connection and refresh the page.";
-      setError(errMsg);
-      throw new Error(errMsg);
+      throw new Error("Puter.js not loaded yet. Please wait a moment.");
     }
 
     try {
       setError(null);
+      // Initiate sign in process
+      const res = await window.puter.auth.signIn();
+      console.log("ONYX: Sign in successful", res);
 
-      const alreadySignedIn = await window.puter.auth.isSignedIn();
-      if (alreadySignedIn) {
-        const userData = await window.puter.auth.getUser();
-        setUser(userData);
-        setLoading(false);
-        return userData;
-      }
+      // Update local user state
+      const userData = await window.puter.auth.getUser();
+      setUser(userData);
+      setLoading(false);
 
-      const userData = await window.puter.auth.signIn();
-
-      if (userData) {
-        setUser(userData);
-        setLoading(false);
-        return userData;
-      } else {
-        await checkAuth();
-      }
+      return res;
     } catch (err) {
-      console.error('ONYX: Sign in failed error:', err);
-      if (err.message && (err.message.includes('popup') || err.message.includes('blocked'))) {
-        setError("Sign-in popup was blocked. Please allow popups for this site.");
-      } else {
-        setError("Sign-in failed. Please try again.");
-      }
+      console.error('ONYX: puter.auth.signIn() failed:', err);
+      setError(err.message || "Sign-in failed.");
       throw err;
     }
   };
 
   const signOut = async () => {
-    if (window.puter) {
+    console.log("ONYX: puter.auth.signOut() invoked");
+    if (window.puter && window.puter.auth) {
       try {
         await window.puter.auth.signOut();
         setUser(null);
       } catch (err) {
-        console.error('Sign out failed:', err);
+        console.error('ONYX: puter.auth.signOut() failed:', err);
       }
     }
   };
