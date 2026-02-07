@@ -140,7 +140,9 @@ export default function DashboardPage() {
               <span className="text-white font-display font-bold text-xl tracking-tight">OnyxGPT</span>
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"></span>
             </div>
-            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-gray-500 animate-pulse">Synchronizing Dashboard...</p>
+            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-gray-500 animate-pulse">
+              {authLoading ? 'Verifying Session...' : 'Loading Projects...'}
+            </p>
           </div>
         </div>
       </div>

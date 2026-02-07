@@ -6,6 +6,11 @@ const LandingPage = () => {
   const { user, loading, error, signIn, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(true);
+
+  useEffect(() => {
+    if (!loading) setIsConnecting(false);
+  }, [loading]);
 
   // Auto-redirect if already logged in
   useEffect(() => {
@@ -71,10 +76,10 @@ const LandingPage = () => {
                 onClick={handleStartBuilding}
                 className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2"
               >
-                {isSigningIn ? (
+                {(isSigningIn || (isConnecting && !error)) ? (
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                    <span>Connecting...</span>
+                    <span>{isConnecting ? 'Connecting...' : 'Starting...'}</span>
                   </div>
                 ) : 'Start Building Today'}
               </button>
@@ -104,10 +109,10 @@ const LandingPage = () => {
                   onClick={handleStartBuilding}
                   className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 min-w-[240px]"
                 >
-                  {isSigningIn ? (
+                  {(isSigningIn || (isConnecting && !error)) ? (
                     <>
                       <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                      <span>Connecting...</span>
+                      <span>{isConnecting ? 'Initializing...' : 'Connecting...'}</span>
                     </>
                   ) : (
                     <>

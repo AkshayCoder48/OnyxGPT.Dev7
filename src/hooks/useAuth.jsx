@@ -29,12 +29,19 @@ export function AuthProvider({ children }) {
     setLoading(true);
     setError(null);
 
-    let puterDetected = false;
+    const checkPuter = () => window.puter && window.puter.auth && typeof window.puter.auth.signIn === 'function';
+
+    if (checkPuter()) {
+      await checkAuth();
+      return;
+    }
+
     // Poll for 30 seconds
+    let puterDetected = false;
     for (let i = 0; i < 300; i++) {
-      if (window.puter && window.puter.auth) {
+      if (checkPuter()) {
         puterDetected = true;
-        console.log("ONYX: Puter.js and Auth module detected after", i * 100, "ms");
+        console.log("ONYX: Puter.js detected after", i * 100, "ms");
         break;
       }
       await new Promise(r => setTimeout(r, 100));
@@ -43,11 +50,10 @@ export function AuthProvider({ children }) {
     if (!puterDetected) {
       console.error("ONYX: Puter.js failed to load within 30 seconds.");
       setError("Puter Cloud connection timeout. Please check your internet or disable ad-blockers and refresh.");
-      setLoading(false);
-      return;
+    } else {
+      await checkAuth();
     }
-
-    await checkAuth();
+    setLoading(false);
   }, [checkAuth]);
 
   useEffect(() => {
@@ -57,15 +63,18 @@ export function AuthProvider({ children }) {
   const signIn = async () => {
     console.log("ONYX: puter.auth.signIn() invoked");
 
+    const checkPuter = () => window.puter && window.puter.auth && typeof window.puter.auth.signIn === 'function';
+
     // Quick polling to catch Puter if it's almost ready
-    if (!window.puter || !window.puter.auth) {
-      for (let i = 0; i < 40; i++) { // Wait up to 2 seconds (40 * 50ms)
-        if (window.puter && window.puter.auth) break;
+    if (!checkPuter()) {
+      console.warn("ONYX: Puter not ready, polling in signIn...");
+      for (let i = 0; i < 60; i++) { // Wait up to 3 seconds
+        if (checkPuter()) break;
         await new Promise(r => setTimeout(r, 50));
       }
     }
 
-    if (!window.puter || !window.puter.auth) {
+    if (!checkPuter()) {
       const msg = "Puter.js not loaded. Please refresh the page or check your connection.";
       setError(msg);
       throw new Error(msg);
@@ -73,17 +82,10 @@ export function AuthProvider({ children }) {
 
     try {
       setError(null);
-      // Initiate sign in process
       const res = await window.puter.auth.signIn();
-      console.log("ONYX: Sign in successful", res);
-
-      // Update local user state
       const userData = await window.puter.auth.getUser();
       setUser(userData);
-
-      // Force loading to false immediately after success
       setLoading(false);
-
       return res;
     } catch (err) {
       console.error('ONYX: puter.auth.signIn() failed:', err);
