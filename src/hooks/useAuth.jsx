@@ -25,44 +25,48 @@ export function AuthProvider({ children }) {
 
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const init = async () => {
-      // More aggressive polling initially
-      let puterDetected = false;
-      for (let i = 0; i < 150; i++) {
-        if (window.puter) {
-          puterDetected = true;
-          console.log("ONYX: Puter.js detected after", i * 100, "ms");
-          break;
-        }
-        await new Promise(r => setTimeout(r, 100));
-      }
+  const init = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-      if (!puterDetected && mounted) {
-        console.error("ONYX: Puter.js failed to load within 15 seconds.");
-        setError("Puter Cloud is taking too long to respond. Please check your connection or refresh.");
+    let puterDetected = false;
+    // Poll for 30 seconds
+    for (let i = 0; i < 300; i++) {
+      if (window.puter && window.puter.auth) {
+        puterDetected = true;
+        console.log("ONYX: Puter.js and Auth module detected after", i * 100, "ms");
+        break;
       }
+      await new Promise(r => setTimeout(r, 100));
+    }
 
-      if (mounted) checkAuth();
-    };
-    init();
-    return () => { mounted = false; };
+    if (!puterDetected) {
+      console.error("ONYX: Puter.js failed to load within 30 seconds.");
+      setError("Puter Cloud connection timeout. Please check your internet or disable ad-blockers and refresh.");
+      setLoading(false);
+      return;
+    }
+
+    await checkAuth();
   }, [checkAuth]);
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   const signIn = async () => {
     console.log("ONYX: Auth.signIn requested");
 
-    if (!window.puter) {
-      // One last attempt to wait
-      for (let i = 0; i < 30; i++) {
-        if (window.puter) break;
+    if (!window.puter || !window.puter.auth) {
+      // One last attempt to wait for 5 seconds
+      for (let i = 0; i < 50; i++) {
+        if (window.puter && window.puter.auth) break;
         await new Promise(r => setTimeout(r, 100));
       }
     }
 
-    if (!window.puter) {
-      const errMsg = "Onyx is having trouble connecting to Puter Cloud. Please refresh the page.";
+    if (!window.puter || !window.puter.auth) {
+      const errMsg = "Onyx cannot connect to Puter Cloud. Please check your connection and refresh the page.";
       setError(errMsg);
       throw new Error(errMsg);
     }
@@ -70,7 +74,6 @@ export function AuthProvider({ children }) {
     try {
       setError(null);
 
-      // Check if already signed in first to avoid popup
       const alreadySignedIn = await window.puter.auth.isSignedIn();
       if (alreadySignedIn) {
         const userData = await window.puter.auth.getUser();
@@ -114,7 +117,8 @@ export function AuthProvider({ children }) {
     error,
     signIn,
     signOut,
-    checkAuth
+    checkAuth,
+    retry: init
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -55,17 +55,12 @@ const LandingPage = () => {
           </div>
           <div className="flex items-center gap-4">
             {error && (
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-[10px] text-red-400 font-bold">
+              <div className="hidden xl:flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-[10px] text-red-400 font-bold max-w-xs truncate">
                  <span className="material-symbols-outlined text-sm">warning</span>
                  {error}
               </div>
             )}
-            {loading || isSigningIn ? (
-              <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
-                <div className="w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
-                <span>Syncing</span>
-              </div>
-            ) : user ? (
+            {user ? (
               <>
                 <button onClick={() => navigate('/dashboard')} className="text-sm font-bold hover:text-primary transition-colors cursor-pointer">Go to Dashboard</button>
                 <button onClick={signOut} className="bg-onyx-card border border-onyx-border px-4 py-2 rounded-lg text-sm font-bold hover:border-white transition-all cursor-pointer">Logout</button>
@@ -73,9 +68,15 @@ const LandingPage = () => {
             ) : (
               <button
                 onClick={handleStartBuilding}
-                className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95"
+                disabled={isSigningIn || (loading && !error)}
+                className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-2"
               >
-                Get Started
+                {isSigningIn || (loading && !error) ? (
+                  <>
+                    <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
+                    <span>{isSigningIn ? '...' : 'Wait'}</span>
+                  </>
+                ) : 'Get Started'}
               </button>
             )}
           </div>
@@ -117,9 +118,17 @@ const LandingPage = () => {
                   )}
                 </button>
                 {error && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs font-bold animate-in fade-in slide-in-from-top-1">
-                    <span className="material-symbols-outlined text-sm">error</span>
-                    {error}
+                  <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                    <div className="flex items-center gap-2 text-red-400 text-xs font-bold">
+                      <span className="material-symbols-outlined text-sm">error</span>
+                      {error}
+                    </div>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="text-primary text-[10px] font-bold uppercase tracking-widest hover:underline cursor-pointer"
+                    >
+                      Refresh Page to Retry
+                    </button>
                   </div>
                 )}
               </div>
@@ -275,7 +284,12 @@ const LandingPage = () => {
                     </>
                   ) : 'Start Building for Free'}
                 </button>
-                {error && <p className="text-red-400 text-[10px] font-bold">{error}</p>}
+                {error && (
+                   <div className="flex flex-col items-center gap-1">
+                      <p className="text-red-400 text-[10px] font-bold">{error}</p>
+                      <button onClick={() => window.location.reload()} className="text-primary text-[9px] font-bold uppercase hover:underline">Retry</button>
+                   </div>
+                )}
               </div>
             </div>
           </div>
