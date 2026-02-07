@@ -58,10 +58,10 @@ export function AuthProvider({ children }) {
     console.log("ONYX: Auth.signIn requested");
 
     if (!window.puter || !window.puter.auth) {
-      // One last attempt to wait for 5 seconds
-      for (let i = 0; i < 50; i++) {
+      // Very aggressive polling to catch Puter as soon as it loads (up to 10s)
+      for (let i = 0; i < 200; i++) {
         if (window.puter && window.puter.auth) break;
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 50));
       }
     }
 
@@ -78,6 +78,7 @@ export function AuthProvider({ children }) {
       if (alreadySignedIn) {
         const userData = await window.puter.auth.getUser();
         setUser(userData);
+        setLoading(false);
         return userData;
       }
 
@@ -85,6 +86,7 @@ export function AuthProvider({ children }) {
 
       if (userData) {
         setUser(userData);
+        setLoading(false);
         return userData;
       } else {
         await checkAuth();

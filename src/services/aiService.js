@@ -196,13 +196,12 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
 
       try {
         if (toolCall.name === 'writeFile') {
-          onLog(`onyx-app $ write ${args.path}`);
           await wc.writeFile(args.path, args.contents);
           result = `File written to ${args.path}.`;
           if (options.onFilesUpdate) options.onFilesUpdate();
         } else if (toolCall.name === 'runCommand') {
           const fullCmd = `${args.command} ${args.args.join(' ')}`;
-          onLog(`onyx-app $ ${fullCmd}`);
+          onLog(fullCmd); // Just show the command itself like a real terminal
 
           if (args.command === 'npm' && args.args.includes('dev')) {
             wc.runCommand(args.command, args.args, (data) => {
@@ -217,15 +216,12 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
             if (exitCode !== 0) status = 'error';
           }
         } else if (toolCall.name === 'kvSet') {
-          onLog(`onyx-app $ kv set ${args.key}`);
           await window.puter.kv.set(args.key, args.value);
           result = "Value saved to Puter KV.";
         } else if (toolCall.name === 'kvGet') {
-          onLog(`onyx-app $ kv get ${args.key}`);
           const val = await window.puter.kv.get(args.key);
           result = JSON.stringify(val);
         } else if (toolCall.name === 'fsWrite') {
-          onLog(`onyx-app $ cloud-fs write ${args.path}`);
           await window.puter.fs.write(args.path, args.contents);
           result = "File written to Puter Cloud FS.";
         } else if (toolCall.name === 'updateTodos') {

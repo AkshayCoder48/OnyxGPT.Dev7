@@ -20,8 +20,21 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  Code2,
+  Layers,
+  Zap,
+  Globe,
+  Sparkles,
+  Palette
 } from 'lucide-react';
+
+const TEMPLATES = [
+  { id: 'react-vite', name: 'React + Vite', description: 'Modern React starter with Vite & Tailwind', icon: <Zap className="text-yellow-400" />, prompt: 'Initialize a React project using Vite and Tailwind CSS. Create a modern, responsive layout.' },
+  { id: 'nextjs', name: 'Next.js 14', description: 'Full-stack Next.js with App Router', icon: <Layers className="text-white" />, prompt: 'Set up a Next.js 14 project with TypeScript and App Router. Include a basic API route and a dashboard layout.' },
+  { id: 'express', name: 'Express API', description: 'Backend-ready Express.js server', icon: <Code2 className="text-green-400" />, prompt: 'Create a Node.js Express server with CORS, JSON parsing, and a few example CRUD routes.' },
+  { id: 'portfolio', name: 'AI Portfolio', description: 'Personal portfolio for AI engineers', icon: <Palette className="text-purple-400" />, prompt: 'Build a sleek, dark-themed personal portfolio for an AI engineer with a 3D glassmorphism style.' }
+];
 
 export default function DashboardPage() {
   const { user, signIn, signOut, loading: authLoading } = useAuth();
@@ -83,17 +96,17 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCreateProject = async () => {
+  const handleCreateProject = async (template = null) => {
     const id = Math.random().toString(36).substring(7);
     const newProject = {
       id,
-      name: generateRandomName(),
+      name: template ? `${template.name} - ${generateRandomName()}` : generateRandomName(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       todos: []
     };
     await saveProject(newProject);
-    navigate(`/workspace/${id}`);
+    navigate(`/workspace/${id}`, { state: { initialPrompt: template?.prompt || '' } });
   };
 
   const handleDeleteProject = async (id) => {
@@ -166,6 +179,12 @@ export default function DashboardPage() {
             label="Projects"
           />
           <SidebarButton
+            active={activeTab === 'templates'}
+            onClick={() => setActiveTab('templates')}
+            icon={<Layout size={18} />}
+            label="Templates"
+          />
+          <SidebarButton
             active={activeTab === 'github'}
             onClick={() => setActiveTab('github')}
             icon={<Github size={18} />}
@@ -191,6 +210,7 @@ export default function DashboardPage() {
         <header className="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-surface/30 backdrop-blur-md sticky top-0 z-10">
           <h2 className="font-display font-bold text-xl uppercase tracking-widest text-gray-400">
             {activeTab === 'projects' && 'Your Projects'}
+            {activeTab === 'templates' && 'Explore Templates'}
             {activeTab === 'github' && 'GitHub Integration'}
           </h2>
 
@@ -217,7 +237,7 @@ export default function DashboardPage() {
 
         <div className="flex-1 overflow-y-auto p-8">
           {activeTab === 'projects' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {filteredProjects.map(project => (
                 <ProjectCard
                   key={project.id}
@@ -227,14 +247,35 @@ export default function DashboardPage() {
                 />
               ))}
               {filteredProjects.length === 0 && (
-                <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-800 rounded-3xl">
-                  <Folder size={48} className="mx-auto text-gray-700 mb-4" />
-                  <p className="text-gray-500">No projects found. Create your first one!</p>
+                <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-800 rounded-3xl group hover:border-primary/50 transition-all cursor-pointer" onClick={() => handleCreateProject()}>
+                  <Folder size={48} className="mx-auto text-gray-700 mb-4 group-hover:text-primary transition-colors" />
+                  <p className="text-gray-500 group-hover:text-gray-300">No projects found. Create your first one!</p>
                 </div>
               )}
             </div>
           )}
 
+          {activeTab === 'templates' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               {TEMPLATES.map(template => (
+                 <div
+                   key={template.id}
+                   onClick={() => handleCreateProject(template)}
+                   className="bg-surface border border-gray-800 rounded-2xl p-6 hover:border-primary/50 transition-all cursor-pointer group relative overflow-hidden"
+                 >
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-primary/10 transition-colors"></div>
+                    <div className="w-12 h-12 bg-background rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-inner">
+                       {template.icon}
+                    </div>
+                    <h3 className="text-lg font-bold mb-2 text-white group-hover:text-primary transition-colors">{template.name}</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed mb-6">{template.description}</p>
+                    <div className="flex items-center text-[10px] font-bold text-primary uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                       Use Template <Plus size={12} className="ml-1" />
+                    </div>
+                 </div>
+               ))}
+            </div>
+          )}
 
           {activeTab === 'github' && (
             <div className="max-w-2xl mx-auto bg-surface border border-gray-800 rounded-2xl p-12 text-center">

@@ -6,7 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
 
   return (
     <Router>
@@ -14,15 +14,15 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route
           path="/dashboard"
-          element={loading ? <LoadingScreen message="Redirecting to Dashboard..." /> : <DashboardPage />}
+          element={(loading && !user) ? <LoadingScreen message="Redirecting to Dashboard..." /> : <DashboardPage />}
         />
         <Route
           path="/workspace/:code"
-          element={loading ? <LoadingScreen message="Resuming Workspace..." /> : <WorkspacePage />}
+          element={(loading && !user) ? <LoadingScreen message="Resuming Workspace..." /> : <WorkspacePage />}
         />
         <Route
           path="/workspace"
-          element={loading ? <LoadingScreen message="Initializing Workspace..." /> : <WorkspacePage />}
+          element={(loading && !user) ? <LoadingScreen message="Initializing Workspace..." /> : <WorkspacePage />}
         />
       </Routes>
     </Router>

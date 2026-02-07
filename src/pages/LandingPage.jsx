@@ -68,15 +68,10 @@ const LandingPage = () => {
             ) : (
               <button
                 onClick={handleStartBuilding}
-                disabled={isSigningIn || (loading && !error)}
-                className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2"
               >
-                {isSigningIn || (loading && !error) ? (
-                  <>
-                    <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                    <span>{isSigningIn ? '...' : 'Wait'}</span>
-                  </>
-                ) : 'Get Started'}
+                {isSigningIn && <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>}
+                <span>Start Building Today</span>
               </button>
             )}
           </div>
@@ -102,17 +97,16 @@ const LandingPage = () => {
               <div className="flex flex-col gap-4 items-center">
                 <button
                   onClick={handleStartBuilding}
-                  disabled={isSigningIn || (loading && !error)}
-                  className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed min-w-[240px]"
+                  className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 min-w-[240px]"
                 >
-                  {isSigningIn || (loading && !error) ? (
+                  {isSigningIn ? (
                     <>
                       <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                      <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
+                      <span>Starting...</span>
                     </>
                   ) : (
                     <>
-                      <span>Start Building for Free</span>
+                      <span>Start Building Today</span>
                       <span className="material-symbols-outlined">bolt</span>
                     </>
                   )}
@@ -274,15 +268,10 @@ const LandingPage = () => {
               <div className="flex flex-col gap-4 items-center">
                 <button
                   onClick={handleStartBuilding}
-                  disabled={isSigningIn || (loading && !error)}
-                  className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-70 min-w-[240px] flex items-center justify-center gap-2"
+                  className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 min-w-[240px] flex items-center justify-center gap-2"
                 >
-                  {isSigningIn || (loading && !error) ? (
-                    <>
-                      <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                      <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
-                    </>
-                  ) : 'Start Building for Free'}
+                  {isSigningIn && <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>}
+                  <span>Start Building Today</span>
                 </button>
                 {error && (
                    <div className="flex flex-col items-center gap-1">

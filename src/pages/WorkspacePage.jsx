@@ -58,7 +58,7 @@ export default function WorkspacePage() {
   const [project, setProject] = useState(null);
   const [isDeploying, setIsDeploying] = useState(false);
   const [ghConnected, setGhConnected] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(code !== 'new');
 
   const hasInitialized = useRef(false);
   const webContainerStarted = useRef(false);
@@ -66,14 +66,20 @@ export default function WorkspacePage() {
   useEffect(() => {
     const loadProject = async () => {
       if (code && code !== 'new') {
+        // If we already have this project loaded, don't trigger full loading
+        if (project?.id === code) return;
+
+        setLoading(true);
         const projects = await getProjects();
         const p = projects.find(proj => proj.id === code);
         if (p) {
           setProject(p);
           if (p.todos) setTodos(p.todos);
         }
+        setLoading(false);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
     if (user) {
       loadProject();
@@ -242,14 +248,23 @@ export default function WorkspacePage() {
 
   const handleUndo = () => {
     if (messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
       const newMsgs = messages.slice(0, -1);
       setMessages(newMsgs);
       saveMessages(code, newMsgs);
+
+      // If the last thing was a context log, we can't really "undo" it easily but we can add a log
+      addLog("Last action undone.");
     }
   };
 
   const handleAttachContext = () => {
     addLog("Context attached: Filesystem snapshot taken.");
+    // Also add a message to the chat so it's undoable and visible to AI
+    const msg = { role: 'system', content: 'Context attached: Filesystem snapshot taken.', timestamp: new Date().toISOString() };
+    const newMessages = [...messages, msg];
+    setMessages(newMessages);
+    saveMessages(code, newMessages);
   };
 
   const handleDeploy = async () => {
