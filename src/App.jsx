@@ -21,8 +21,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/workspace/:code" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
-        <Route path="/workspace" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
+        <Route path="/workspace/:code" element={<WorkspacePage />} />
+        <Route path="/workspace" element={<WorkspacePage />} />
       </Routes>
     </Router>
   );

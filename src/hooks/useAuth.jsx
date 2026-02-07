@@ -28,14 +28,19 @@ export function AuthProvider({ children }) {
   }, [checkAuth]);
 
   const signIn = async () => {
-    if (window.puter) {
-      try {
-        const userData = await window.puter.auth.signIn();
-        setUser(userData);
-        return userData;
-      } catch (err) {
-        console.error('Sign in failed:', err);
-      }
+    if (!window.puter) {
+      console.error("ONYX: Puter.js not loaded yet.");
+      return;
+    }
+    try {
+      console.log("ONYX: Calling puter.auth.signIn()...");
+      const userData = await window.puter.auth.signIn();
+      console.log("ONYX: puter.auth.signIn() resolved with:", userData);
+      setUser(userData);
+      return userData;
+    } catch (err) {
+      console.error('Sign in failed:', err);
+      throw err;
     }
   };
 

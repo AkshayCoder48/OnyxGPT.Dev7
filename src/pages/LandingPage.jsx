@@ -6,11 +6,25 @@ const LandingPage = () => {
   const { user, loading, signIn: login, signOut: logout } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (user && !loading) {
+      console.log("ONYX: User authenticated, redirecting to dashboard...");
+      navigate('/dashboard');
+    }
+  }, [user, loading, navigate]);
+
   const handleStartBuilding = async () => {
+    console.log("ONYX: Start building clicked. User status:", !!user);
     if (!user) {
-      const userData = await login();
-      if (userData) navigate('/dashboard');
+      try {
+        console.log("ONYX: Initiating Puter sign-in...");
+        await login();
+        // Redirect will be handled by useEffect [user]
+      } catch (err) {
+        console.error("ONYX: Sign-in error:", err);
+      }
     } else {
+      console.log("ONYX: User already logged in. Navigating to dashboard...");
       navigate('/dashboard');
     }
   };
