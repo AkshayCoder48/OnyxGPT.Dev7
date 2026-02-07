@@ -63,11 +63,11 @@ const LandingPage = () => {
 
       <main>
         {/* Hero Section */}
-        <section className="relative pt-32 pb-20 px-6 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
-          <div className="absolute top-40 left-1/4 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none"></div>
+        <section className="relative pt-32 pb-20 px-6 overflow-hidden z-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+          <div className="absolute top-40 left-1/4 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none -z-10"></div>
 
-          <div className="max-w-5xl mx-auto text-center relative z-10">
+          <div className="max-w-5xl mx-auto text-center relative z-20">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-8 animate-pulse">
               <span className="w-2 h-2 rounded-full bg-primary"></span>
               v2.0 Now Live - The AI Native IDE
@@ -195,13 +195,17 @@ const LandingPage = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { title: 'Dashboards', subtitle: 'Data visualization apps', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB9wxQXj7BTFwnPMHzjA4tGEH3dJatehqCB5fKCkZ51GBhrNGkvNFyHBzaqEzpo918oww3SNXGW5KBghnlyRa4XGZcOjuW910qeRgWwunupOq5wlxqOW96a7fvTd_udWDD-61-B9fAGMAEUlz5X8D-qJFAMFcUrd1NLTraEL8eMTi5fpah33a7EAazMcJUnjV9Gx_73E6I3SqHmwqN68auvnkTJ6AOhec9YHRgKV7xz8puJhcy___aepHZJRLiBCAqm_tOME3LjC6kn' },
-                { title: 'E-Commerce', subtitle: 'Storefronts & carts', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF8AT5vXCBewV2gH35kZRGkc7Xl3-djcVssmpTkYsfbsTNSgbcoMxXHv_a9oNCRZUsT1iLy5J7fqFvmY_fU4Y8xVpv9qNpTpSunLL3MGeyqZ0geoAH-g1SfcOudDGhvuj2T2BtHfbKJYwJcLz7cdgV4X8QRhQDK7iHil6BGqvjiWnPDQq2Oe5-fyM4EENaOVWn6OSll-iyCmwvDXdYSYKzL5FwCwVbhsBO3jpHlmMGRq9Gx_qLy7uN9rPpDtLhJzzwDWndhQyJ6h1F' },
-                { title: 'Landing Pages', subtitle: 'Marketing sites', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAMAx2oWA2Jcsv_NkCQSkEdLaxNwnpCnUUGQnOHq8l1ZD-zYBmwp6yll6xyA79EectYyyuWt2_nM7KXBDQAr4ZQ6OjqgDPB0VDIBJo5bC5y816MoPQZxlYjt718QQernyFhO9jTNewaLsvQp8tyvnli0PJPSNJPcEZp1NyAZCKe2DjYpGyR-8tWnxouCoSN_Aqr0zdLoOIFiU-xlQfPOurbHUGNIBKJllXjrvxLDC_1Ca6Gp4_PuyyuucnVivVwIrzAwqnIrKpF0vci' },
-                { title: 'SaaS Tools', subtitle: 'Productivity apps', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDUMtmlKPaw8ATjf6bcqbYAciBuME8eHBvONu0FZdMgTPAYJMc3hF_haFpRAMm8wRG4q2234r9Dhagm2-ezpyRlz-RrLvS-79r7XqybFqBuf8--AwqagDHPN7-eXEMTwJIC8J9W3Kt88OLLRKGIRIZwTC8MuhuEVYLV2m9F6aPkOKjnDBxcXJGuIRQDPyeTGMLkArPOoleyV5sVDUO2dtwjyRMyGzckljysJEnhDDSiswrkctBCcG6HtDVLS2aUFN-GY13DhVeE1i0I' }
+                { title: 'Dashboards', subtitle: 'Data visualization apps', img: 'https://images.unsplash.com/photo-1551288049-bbbda5366392?auto=format&fit=crop&q=80&w=500' },
+                { title: 'E-Commerce', subtitle: 'Storefronts & carts', img: 'https://images.unsplash.com/photo-1557821552-17105176677c?auto=format&fit=crop&q=80&w=500' },
+                { title: 'Landing Pages', subtitle: 'Marketing sites', img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=500' },
+                { title: 'SaaS Tools', subtitle: 'Productivity apps', img: 'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&q=80&w=500' }
               ].map((item, i) => (
-                <div key={i} className="group relative rounded-lg overflow-hidden aspect-square cursor-pointer">
-                  <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: `url('${item.img}')` }}></div>
+                <div key={i} className="group relative rounded-lg overflow-hidden aspect-square cursor-pointer bg-onyx-card">
+                  <img
+                    src={item.img}
+                    alt={item.title}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6 flex flex-col justify-end">
                     <h4 className="text-white font-bold text-lg translate-y-2 group-hover:translate-y-0 transition-transform">{item.title}</h4>
                     <p className="text-gray-400 text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity">{item.subtitle}</p>
