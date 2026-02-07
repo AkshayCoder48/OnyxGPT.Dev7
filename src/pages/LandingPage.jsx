@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const LandingPage = () => {
-  const { user, loading, signIn, signOut } = useAuth();
+  const { user, loading, error, signIn, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
@@ -54,6 +54,12 @@ const LandingPage = () => {
             <a href="#showcase" className="hover:text-primary transition-colors">Showcase</a>
           </div>
           <div className="flex items-center gap-4">
+            {error && (
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-[10px] text-red-400 font-bold">
+                 <span className="material-symbols-outlined text-sm">warning</span>
+                 {error}
+              </div>
+            )}
             {loading || isSigningIn ? (
               <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
                 <div className="w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
@@ -92,23 +98,31 @@ const LandingPage = () => {
               The world's first AI-native IDE that turns your ideas into full-stack applications in seconds. No setup, no boilerplate, just pure creation.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16 relative z-30">
-              <button
-                onClick={handleStartBuilding}
-                disabled={isSigningIn || loading}
-                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed min-w-[240px]"
-              >
-                {isSigningIn || loading ? (
-                  <>
-                    <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                    <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Start Building for Free</span>
-                    <span className="material-symbols-outlined">bolt</span>
-                  </>
+              <div className="flex flex-col gap-4 items-center">
+                <button
+                  onClick={handleStartBuilding}
+                  disabled={isSigningIn || (loading && !error)}
+                  className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed min-w-[240px]"
+                >
+                  {isSigningIn || (loading && !error) ? (
+                    <>
+                      <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
+                      <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Start Building for Free</span>
+                      <span className="material-symbols-outlined">bolt</span>
+                    </>
+                  )}
+                </button>
+                {error && (
+                  <div className="flex items-center gap-2 text-red-400 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                    <span className="material-symbols-outlined text-sm">error</span>
+                    {error}
+                  </div>
                 )}
-              </button>
+              </div>
             </div>
 
             {/* Mock IDE Preview */}
@@ -248,18 +262,21 @@ const LandingPage = () => {
             <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-6">Ready to code at the speed of thought?</h2>
             <p className="text-xl text-onyx-text-muted mb-10">Join thousands of developers building the future with OnyxGPT.</p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button
-                onClick={handleStartBuilding}
-                disabled={isSigningIn || loading}
-                className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-70 min-w-[240px] flex items-center justify-center gap-2"
-              >
-                {isSigningIn || loading ? (
-                   <>
-                    <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                    <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
-                  </>
-                ) : 'Start Building for Free'}
-              </button>
+              <div className="flex flex-col gap-4 items-center">
+                <button
+                  onClick={handleStartBuilding}
+                  disabled={isSigningIn || (loading && !error)}
+                  className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-70 min-w-[240px] flex items-center justify-center gap-2"
+                >
+                  {isSigningIn || (loading && !error) ? (
+                    <>
+                      <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
+                      <span>{isSigningIn ? 'Connecting...' : 'Initializing...'}</span>
+                    </>
+                  ) : 'Start Building for Free'}
+                </button>
+                {error && <p className="text-red-400 text-[10px] font-bold">{error}</p>}
+              </div>
             </div>
           </div>
         </section>

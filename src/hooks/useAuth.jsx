@@ -23,17 +23,27 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     let mounted = true;
     const init = async () => {
-      // Wait for Puter.js to be available (max 10s, but checking frequently)
-      for (let i = 0; i < 100; i++) {
+      // More aggressive polling initially
+      let puterDetected = false;
+      for (let i = 0; i < 150; i++) {
         if (window.puter) {
+          puterDetected = true;
           console.log("ONYX: Puter.js detected after", i * 100, "ms");
           break;
         }
         await new Promise(r => setTimeout(r, 100));
       }
+
+      if (!puterDetected && mounted) {
+        console.error("ONYX: Puter.js failed to load within 15 seconds.");
+        setError("Puter Cloud is taking too long to respond. Please check your connection or refresh.");
+      }
+
       if (mounted) checkAuth();
     };
     init();
@@ -43,41 +53,45 @@ export function AuthProvider({ children }) {
   const signIn = async () => {
     console.log("ONYX: Auth.signIn requested");
 
-    // Wait for Puter to be ready if it isn't yet
     if (!window.puter) {
-      console.warn("ONYX: Puter.js not ready, waiting...");
-      for (let i = 0; i < 20; i++) {
+      // One last attempt to wait
+      for (let i = 0; i < 30; i++) {
         if (window.puter) break;
         await new Promise(r => setTimeout(r, 100));
       }
     }
 
     if (!window.puter) {
-      console.error("ONYX: Puter.js failed to load after timeout.");
-      alert("Onyx is having trouble connecting to Puter Cloud. Please refresh the page.");
-      return;
+      const errMsg = "Onyx is having trouble connecting to Puter Cloud. Please refresh the page.";
+      setError(errMsg);
+      throw new Error(errMsg);
     }
 
     try {
-      console.log("ONYX: Calling window.puter.auth.signIn()...");
-      // Some browsers block popups if not a direct result of user interaction.
-      // We ensure this is called within the same stack as the click.
+      setError(null);
+
+      // Check if already signed in first to avoid popup
+      const alreadySignedIn = await window.puter.auth.isSignedIn();
+      if (alreadySignedIn) {
+        const userData = await window.puter.auth.getUser();
+        setUser(userData);
+        return userData;
+      }
+
       const userData = await window.puter.auth.signIn();
 
       if (userData) {
-        console.log("ONYX: Sign-in successful:", userData.username);
         setUser(userData);
         return userData;
       } else {
-        console.warn("ONYX: Sign-in resolved but no user data returned.");
-        // Re-check auth state as a fallback
         await checkAuth();
       }
     } catch (err) {
       console.error('ONYX: Sign in failed error:', err);
-      // If it's a popup blocked error, we might want to inform the user
       if (err.message && (err.message.includes('popup') || err.message.includes('blocked'))) {
-        alert("Sign-in popup was blocked. Please allow popups for this site.");
+        setError("Sign-in popup was blocked. Please allow popups for this site.");
+      } else {
+        setError("Sign-in failed. Please try again.");
       }
       throw err;
     }
@@ -97,6 +111,7 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     loading,
+    error,
     signIn,
     signOut,
     checkAuth

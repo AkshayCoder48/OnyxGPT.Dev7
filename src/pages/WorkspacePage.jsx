@@ -305,10 +305,10 @@ export default function WorkspacePage() {
 
   if (authLoading || (user && loading)) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
          <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">Resuming Workspace</p>
+            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            <p className="text-gray-500 font-mono text-[10px] uppercase tracking-[0.2em]">Resuming...</p>
          </div>
       </div>
     );

@@ -113,16 +113,12 @@ export default function DashboardPage() {
 
   if (authLoading || (user && loading)) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/5 blur-[120px] rounded-full animate-pulse"></div>
-        <div className="flex flex-col items-center space-y-6 z-10">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-xl border-2 border-primary/20 border-t-primary animate-spin"></div>
-            <Terminal className="absolute inset-0 m-auto text-primary w-6 h-6 animate-pulse" />
-          </div>
+        <div className="flex flex-col items-center space-y-4 z-10">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
           <div className="text-center">
-            <p className="text-white font-display font-bold text-lg tracking-widest uppercase">Initializing Onyx</p>
-            <p className="text-gray-500 font-mono text-xs mt-2">Connecting to Puter Cloud...</p>
+            <p className="text-gray-500 font-mono text-[10px] uppercase tracking-[0.2em]">Synchronizing...</p>
           </div>
         </div>
       </div>
