@@ -1,4 +1,5 @@
 import * as wc from './webContainer';
+import { persistFile } from './storage';
 
 const SYSTEM_PROMPT = `You are Onyx, an autonomous, conversational, and highly skilled AI software engineer.
 You build modern React + Vite applications with a focus on clean UI and robust logic.
@@ -197,6 +198,10 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       try {
         if (toolCall.name === 'writeFile') {
           await wc.writeFile(args.path, args.contents);
+          // Persist to Puter FS for isolation and saving
+          if (options.projectId) {
+            await persistFile(options.projectId, args.path, args.contents);
+          }
           result = `File written to ${args.path}.`;
           if (options.onFilesUpdate) options.onFilesUpdate();
         } else if (toolCall.name === 'runCommand') {

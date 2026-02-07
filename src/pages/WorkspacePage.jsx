@@ -22,9 +22,9 @@ import {
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
-import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
+import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken, getPersistedFiles } from '../services/storage';
 import { generateRandomName } from '../utils/names';
-import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
+import { getWebContainer, listFiles, readFile as wcReadFile, writeFile as wcWriteFile } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
 import { useAuth } from '../hooks/useAuth';
@@ -103,12 +103,23 @@ export default function WorkspacePage() {
 
   useEffect(() => {
     const initWC = async () => {
-      if (!webContainerStarted.current && user) {
+      if (!webContainerStarted.current && user && code && code !== 'new') {
         webContainerStarted.current = true;
         try {
           addLog('Booting WebContainer...');
-          await getWebContainer();
+          const wc = await getWebContainer();
           addLog('WebContainer ready.');
+
+          // Load persisted files from Puter FS
+          addLog('Restoring project state from Puter Cloud...');
+          const persistedFiles = await getPersistedFiles(code);
+          if (persistedFiles.length > 0) {
+            for (const file of persistedFiles) {
+              await wcWriteFile(file.path, file.content);
+            }
+            addLog(`Restored ${persistedFiles.length} files.`);
+          }
+
           refreshFiles();
         } catch (err) {
           addLog(`WebContainer Error: ${err.message}`);
@@ -116,7 +127,7 @@ export default function WorkspacePage() {
       }
     };
     initWC();
-  }, [user]);
+  }, [user, code]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -214,6 +225,7 @@ export default function WorkspacePage() {
       await chatWithAI(
         newMessages,
         {
+          projectId: projectId,
           model: appSettings.customModelId,
           onUrlReady: (url) => {
             setPreviewUrl(url);

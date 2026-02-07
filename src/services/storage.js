@@ -19,10 +19,59 @@ export async function saveProject(project) {
     }
 
     await window.puter.kv.set('onyx_projects', JSON.stringify(projects));
+
+    // Ensure project directory exists in Puter FS
+    const projectPath = `.onyx/projects/${project.id}`;
+    await window.puter.fs.mkdir(projectPath, { recursive: true });
+
     return { data: project };
   } catch (error) {
     console.error('Error saving project:', error);
     return { error };
+  }
+}
+
+// Persist a file to Puter FS for a specific project
+export async function persistFile(projectId, path, content) {
+  if (!window.puter) return;
+  try {
+    const fullPath = `.onyx/projects/${projectId}/${path}`;
+    // Ensure parent directory exists
+    const dir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+    if (dir) await window.puter.fs.mkdir(dir, { recursive: true });
+    await window.puter.fs.write(fullPath, content);
+  } catch (error) {
+    console.error('Error persisting file to Puter FS:', error);
+  }
+}
+
+// Load all persisted files for a project
+export async function getPersistedFiles(projectId) {
+  if (!window.puter) return [];
+  try {
+    const projectPath = `.onyx/projects/${projectId}`;
+    const files = [];
+
+    const traverse = async (path) => {
+      const items = await window.puter.fs.readdir(path);
+      for (const item of items) {
+        const itemPath = `${path}/${item.name}`;
+        if (item.is_dir) {
+          await traverse(itemPath);
+        } else {
+          const content = await window.puter.fs.read(itemPath);
+          // Relative path for WebContainer
+          const relPath = itemPath.replace(`.onyx/projects/${projectId}/`, '');
+          files.push({ path: relPath, content });
+        }
+      }
+    };
+
+    await traverse(projectPath);
+    return files;
+  } catch (error) {
+    console.error('Error loading persisted files:', error);
+    return [];
   }
 }
 
