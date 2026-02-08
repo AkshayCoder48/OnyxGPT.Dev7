@@ -12,14 +12,6 @@ const LandingPage = () => {
     if (!loading) setIsConnecting(false);
   }, [loading]);
 
-  // Auto-redirect if already logged in
-  useEffect(() => {
-    if (user && !loading) {
-      console.log("ONYX: User authenticated, redirecting to dashboard...");
-      navigate('/dashboard');
-    }
-  }, [user, loading, navigate]);
-
   const handleStartBuilding = async (e) => {
     if (e) e.preventDefault();
 
@@ -81,7 +73,7 @@ const LandingPage = () => {
                     <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
                     <span>{isConnecting ? 'Connecting...' : 'Starting...'}</span>
                   </div>
-                ) : 'Start Building Today'}
+                ) : user ? 'Go to Dashboard' : 'Start Building Today'}
               </button>
             )}
           </div>
@@ -116,7 +108,7 @@ const LandingPage = () => {
                     </>
                   ) : (
                     <>
-                      <span>Start Building Today</span>
+                      <span>{user ? 'Go to Dashboard' : 'Start Building Today'}</span>
                       <span className="material-symbols-outlined">bolt</span>
                     </>
                   )}
@@ -285,7 +277,7 @@ const LandingPage = () => {
                       <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
                       <span>Connecting...</span>
                     </>
-                  ) : 'Start Building Today'}
+                  ) : user ? 'Go to Dashboard' : 'Start Building Today'}
                 </button>
                 {error && (
                    <div className="flex flex-col items-center gap-1">

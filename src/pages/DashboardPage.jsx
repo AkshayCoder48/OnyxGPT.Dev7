@@ -376,10 +376,21 @@ function ProjectCard({ project, onClick, onDelete }) {
     setShowMenu(false);
   };
 
-  const togglePin = (e) => {
+  const togglePin = async (e) => {
     e.stopPropagation();
-    setIsPinned(!isPinned);
-    // Ideally we'd save this to Puter KV here too
+    const newPinned = !isPinned;
+    setIsPinned(newPinned);
+
+    // Save to Puter KV
+    const projects = await getProjects();
+    const index = projects.findIndex(p => p.id === project.id);
+    if (index >= 0) {
+      projects[index].isPinned = newPinned;
+      if (window.puter) {
+        await window.puter.kv.set('onyx_projects', JSON.stringify(projects));
+      }
+    }
+
     setShowMenu(false);
   };
 
