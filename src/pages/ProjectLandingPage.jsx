@@ -71,6 +71,10 @@ export default function ProjectLandingPage() {
 
   const handleCreateProject = async (e) => {
     if (e) e.preventDefault();
+    if (!window.puter) {
+      alert("Puter.js is not loaded. Please ensure you are in a Secure Context (HTTPS or localhost) and your browser is not blocking scripts.");
+      return;
+    }
     if (!user) {
       await signIn();
       return;
@@ -90,6 +94,10 @@ export default function ProjectLandingPage() {
   };
 
   const handleConnectGitHub = async () => {
+    if (!window.puter) {
+      alert("Puter.js is not loaded.");
+      return;
+    }
     if (isGitHubConnected) {
        if (confirm("Disconnect GitHub account?")) {
          await deleteGitHubToken();
@@ -100,8 +108,12 @@ export default function ProjectLandingPage() {
     }
     const token = prompt("Please enter your GitHub Personal Access Token (repo scope):");
     if (token) {
-      await window.puter.kv.set('github_token', token);
-      loadInitialData();
+      try {
+        await window.puter.kv.set('github_token', token);
+        loadInitialData();
+      } catch (err) {
+        alert("Failed to save token: " + err.message);
+      }
     }
   };
 

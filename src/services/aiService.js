@@ -27,7 +27,10 @@ WORKFLOW:
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
-  if (!window.puter) return;
+  if (!window.puter) {
+    onLog("Error: Puter.js not found. Please check your internet connection or browser security settings.");
+    return;
+  }
 
   const tools = [
     {
