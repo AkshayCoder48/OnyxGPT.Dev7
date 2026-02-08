@@ -90,7 +90,13 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         } catch (err) {
           addLog(`WebContainer Error: ${err.message}`);
           if (err.message.includes('Security Error')) {
-            addLog('Tip: WebContainer requires a cross-origin isolated environment. Ensure the server sends COOP/COEP headers.');
+            addLog('CRITICAL: Cross-Origin Isolation (COOP/COEP) headers are missing or your browser is blocking them.');
+            addLog('To fix this:');
+            addLog('1. Ensure you are using HTTPS (or localhost).');
+            addLog('2. Check if your browser supports WebContainers (Chrome/Edge/Firefox recommended).');
+            addLog('3. If hosted, ensure the server sends:');
+            addLog('   Cross-Origin-Embedder-Policy: require-corp');
+            addLog('   Cross-Origin-Opener-Policy: same-origin');
           } else if (err.message.includes('already running')) {
             addLog('Tip: Only one WebContainer can run per origin. Close other tabs or use the "Restart" button above.');
           }
@@ -186,10 +192,15 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const handleRestartWebContainer = async () => {
     try {
       addLog('Initiating WebContainer restart sequence...');
+      // Clear logs to provide a fresh start visual
+      setLogs(['Initializing Onyx Environment...', 'User authenticated.', 'Restarting WebContainer...']);
       await restartWebContainer();
       addLog('WebContainer restarted successfully. Environment is fresh.');
     } catch (err) {
       addLog(`WebContainer Restart Error: ${err.message}`);
+      if (err.message.includes('already running')) {
+        addLog('Tip: If restart fails, please try refreshing the entire page. WebContainer can sometimes get stuck if multiple boot attempts happen too quickly.');
+      }
     }
   };
 

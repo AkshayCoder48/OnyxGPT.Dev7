@@ -19,8 +19,14 @@ export async function getWebContainer() {
 
   console.log("ONYX: Initializing WebContainer boot sequence...");
 
-  if (!window.crossOriginIsolated) {
-    console.error("ONYX: Environment is NOT cross-origin isolated. WebContainer will fail.");
+  const diagnostics = {
+    isSecureContext: window.isSecureContext,
+    crossOriginIsolated: window.crossOriginIsolated,
+    sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+  };
+
+  if (!diagnostics.crossOriginIsolated || !diagnostics.isSecureContext) {
+    console.error("ONYX: WebContainer environment check failed:", diagnostics);
   }
 
   window.__WEBCONTAINER_PROMISE__ = (async () => {
@@ -31,19 +37,25 @@ export async function getWebContainer() {
       return instance;
     } catch (err) {
       const isAlreadyBooted = err.message.includes('Unable to create more instances') ||
-                             err.message.includes('Only a single WebContainer instance can be booted');
+                             err.message.includes('Only a single WebContainer instance can be booted') ||
+                             err.message.includes('already running');
 
       if (isAlreadyBooted) {
         console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        throw new Error("WebContainer is already running in another tab or was not properly closed. Please close other tabs or use the 'Restart' option.");
+        throw new Error("WebContainer is already running. If you just refreshed, please wait a moment or use the 'Restart' button in the terminal.");
       }
 
-      if ((err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) || !window.crossOriginIsolated) {
-        throw new Error("Security Error: Cross-Origin Isolation (COOP/COEP) is missing. WebContainer requires these headers to be set on the server.");
+      let errorMsg = `WebContainer Boot Error: ${err.message}`;
+      if (!diagnostics.isSecureContext) {
+        errorMsg = "Security Error: WebContainer requires a Secure Context (HTTPS or localhost).";
+      } else if (!diagnostics.crossOriginIsolated) {
+        errorMsg = "Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. Check your server configuration.";
+      } else if (!diagnostics.sharedArrayBuffer) {
+        errorMsg = "Security Error: SharedArrayBuffer is not supported by your browser or environment.";
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;
-      throw err;
+      throw new Error(errorMsg);
     }
   })();
 

@@ -160,6 +160,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         onLog(`onyx-app $ ${fullCmd}`);
 
         if (args.command === 'npm' && args.args.includes('dev')) {
+          onLog(`[SYSTEM] Starting development server...`);
           wc.runCommand(args.command, args.args, (data) => {
             onLog(data);
             const match = data.match(/http:\/\/localhost:\d+/);
@@ -167,9 +168,16 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
           });
           result = "Development server started.";
         } else {
-          const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
-          result = `Command finished with exit code ${exitCode}.`;
-          if (exitCode !== 0) status = 'error';
+          onLog(`[SYSTEM] Running command...`);
+          try {
+            const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
+            result = `Command finished with exit code ${exitCode}.`;
+            if (exitCode !== 0) status = 'error';
+            onLog(`[SYSTEM] ${result}`);
+          } catch (cmdErr) {
+             onLog(`[SYSTEM] Command failed to start: ${cmdErr.message}`);
+             throw cmdErr;
+          }
         }
       } else if (toolCall.name === 'kvSet') {
         onLog(`onyx-app $ kv set ${args.key}`);
