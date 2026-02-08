@@ -49,7 +49,8 @@ export async function getWebContainer() {
       }
 
       if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
-        throw new Error("SharedArrayBuffer Error: COOP/COEP headers are missing. Check your server configuration.");
+        // This is expected if headers are removed
+        throw new Error("Onyx Environment Warning: WebContainers require cross-origin isolation (COOP/COEP) to run. These headers are currently disabled, which may prevent the workspace from initializing correctly.");
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;
