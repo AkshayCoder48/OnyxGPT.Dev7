@@ -21,7 +21,7 @@ import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
 import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
 import { generateRandomName } from '../utils/names';
-import { getWebContainer, listFiles, readFile as wcReadFile, teardown, restartWebContainer } from '../services/webContainer';
+import { getWebContainer, listFiles, readFile as wcReadFile, teardown, restartWebContainer, clearVirtualFS } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
 
@@ -53,8 +53,8 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   useEffect(() => {
     if (code && code !== 'new' && code !== currentProjectId.current && webContainerStarted.current) {
+      handleRestartWebContainer(true); // pass true to indicate project switch
       currentProjectId.current = code;
-      handleRestartWebContainer();
     }
   }, [code]);
 
@@ -190,13 +190,19 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     addLog("Context attached: Filesystem snapshot taken.");
   };
 
-  const handleRestartWebContainer = async () => {
+  const handleRestartWebContainer = async (isProjectSwitch = false) => {
     try {
       addLog('Initiating WebContainer restart sequence...');
       // Clear logs to provide a fresh start visual
       setLogs(['Initializing Onyx Environment...', 'User authenticated.', 'Restarting WebContainer...']);
+
+      // If we are switching projects, we should clear the virtual FS
+      if (isProjectSwitch) {
+        clearVirtualFS();
+      }
+
       await restartWebContainer();
-      addLog('WebContainer restarted successfully. Environment is fresh.');
+      addLog('WebContainer restarted successfully. Environment is ready.');
     } catch (err) {
       addLog(`WebContainer Restart Error: ${err.message}`);
       if (err.message.includes('already running')) {

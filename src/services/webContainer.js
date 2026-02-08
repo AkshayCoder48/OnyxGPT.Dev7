@@ -1,6 +1,12 @@
 import { WebContainer } from '@webcontainer/api';
 
 /**
+ * Global state to track files written to WebContainer,
+ * allowing them to be restored after a restart.
+ */
+let virtualFS = {};
+
+/**
  * Singleton WebContainer instance management.
  * We use window to persist across HMR and multiple module evaluations.
  */
@@ -67,6 +73,17 @@ export async function getWebContainer() {
 export async function writeFile(path, contents) {
   const wc = await getWebContainer();
   await wc.fs.writeFile(path, contents);
+
+  // Track in virtual FS for restoration after restart
+  // Handles nested paths by creating directory structure
+  const parts = path.split('/').filter(Boolean);
+  let current = virtualFS;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    if (!current[part]) current[part] = { directory: {} };
+    current = current[part].directory;
+  }
+  current[parts[parts.length - 1]] = { file: { contents } };
 }
 
 export async function readFile(path) {
@@ -97,6 +114,8 @@ export async function listFiles(path = '/') {
 export async function mount(files) {
   const wc = await getWebContainer();
   await wc.mount(files);
+  // Merge into virtual FS
+  virtualFS = { ...virtualFS, ...files };
 }
 
 /**
@@ -134,5 +153,20 @@ export async function teardown() {
  */
 export async function restartWebContainer() {
   await teardown();
-  return await getWebContainer();
+  const instance = await getWebContainer();
+
+  // Restore files if any were tracked
+  if (Object.keys(virtualFS).length > 0) {
+    console.log("ONYX: Restoring virtual filesystem after restart...");
+    await instance.mount(virtualFS);
+  }
+
+  return instance;
+}
+
+/**
+ * Clears the virtual filesystem cache.
+ */
+export function clearVirtualFS() {
+  virtualFS = {};
 }

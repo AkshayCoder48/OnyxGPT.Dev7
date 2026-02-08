@@ -15,7 +15,8 @@ if (typeof window === 'undefined') {
                 }
 
                 const newHeaders = new Headers(response.headers);
-                newHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
+                // Use credentialless if possible, otherwise require-corp
+                newHeaders.set("Cross-Origin-Embedder-Policy", "credentialless");
                 newHeaders.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
                 newHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
 
@@ -26,7 +27,6 @@ if (typeof window === 'undefined') {
                 });
             }).catch(e => {
                 console.error("COI Fetch Error:", e);
-                // Return original response if possible or a fallback
                 return fetch(event.request);
             })
         );
@@ -34,13 +34,11 @@ if (typeof window === 'undefined') {
 } else {
     (() => {
         const script = document.currentScript;
-        const coepCustomHeader = script.getAttribute("coep") || "require-corp";
-        const coopCustomHeader = script.getAttribute("coop") || "same-origin-allow-popups";
-
+        const scriptSrc = script ? script.src : '/coi-serviceworker.js';
         if (window.crossOriginIsolated) return;
 
         if (window.isSecureContext && !!window.navigator.serviceWorker) {
-            window.navigator.serviceWorker.register(window.document.currentScript.src).then((registration) => {
+            window.navigator.serviceWorker.register(scriptSrc).then((registration) => {
                 console.log("COI Service Worker registered", registration.scope);
 
                 registration.addEventListener("updatefound", () => {
