@@ -6,8 +6,11 @@ export function useAuth() {
   const [puterLoaded, setPuterLoaded] = useState(!!window.puter);
 
   const checkAuth = useCallback(async () => {
-    if (window.puter) {
-      try {
+    try {
+      if (window.puterReady) await window.puterReady;
+
+      if (window.puter) {
+        setPuterLoaded(true);
         const isSignedIn = await window.puter.auth.isSignedIn();
         if (isSignedIn) {
           const userData = await window.puter.auth.getUser();
@@ -15,31 +18,11 @@ export function useAuth() {
         } else {
           setUser(null);
         }
-      } catch (err) {
-        console.error('Auth check failed:', err);
       }
+    } catch (err) {
+      console.error('Auth check failed:', err);
+    } finally {
       setLoading(false);
-    } else {
-      // If puter is not loaded, we wait a bit and retry
-      let retries = 0;
-      const interval = setInterval(async () => {
-        if (window.puter) {
-          clearInterval(interval);
-          setPuterLoaded(true);
-          try {
-            const isSignedIn = await window.puter.auth.isSignedIn();
-            if (isSignedIn) {
-              const userData = await window.puter.auth.getUser();
-              setUser(userData);
-            }
-          } catch (e) {}
-          setLoading(false);
-        } else if (retries > 20) {
-          clearInterval(interval);
-          setLoading(false);
-        }
-        retries++;
-      }, 200);
     }
   }, []);
 

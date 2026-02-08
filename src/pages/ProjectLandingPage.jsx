@@ -34,6 +34,7 @@ export default function ProjectLandingPage() {
   const [projects, setProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [promptInput, setPromptInput] = useState('');
+  const promptRef = React.useRef(null);
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
   const [ghUser, setGhUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -275,7 +276,10 @@ export default function ProjectLandingPage() {
             ].map((suggestion, i) => (
               <button
                 key={i}
-                onClick={() => setPromptInput(`Build a ${suggestion.title} with modern UI and responsive design.`)}
+                onClick={() => {
+                    setPromptInput(`Build a ${suggestion.title} with modern UI and responsive design.`);
+                    promptRef.current?.focus();
+                }}
                 className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 hover:border-white/10 transition-all text-left group"
               >
                 <div className="flex items-center space-x-3">
