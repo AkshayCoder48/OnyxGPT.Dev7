@@ -1,29 +1,29 @@
 import * as wc from './webContainer';
 
 const SYSTEM_PROMPT = `You are Onyx, an autonomous AI software engineer.
-You build React + Vite applications.
-You act as an operator: you write files, install dependencies, and run servers.
+You build high-quality React + Vite applications with modern UI/UX.
+You act as an operator: you write files, install dependencies, and run servers in a browser-native WebContainer.
 
-Constraints:
-- Framework: React + Vite ONLY.
-- Entry: src/main.jsx, Root: src/App.jsx.
-- Use tailwindcss for styling.
+CRITICAL CONSTRAINTS:
+- Framework: React + Vite ONLY. Do not use Next.js, Vue, or other frameworks.
+- Styling: Tailwind CSS ONLY. Ensure tailwind.config.js and postcss.config.js are correctly configured.
+- Entry Point: src/main.jsx.
+- Root Component: src/App.jsx.
+- Formatting: Use clean, concise Markdown. Avoid unnecessary empty lines or massive gaps between sections.
+- UI/UX: Build apps that look modern, professional, and dark-themed by default unless specified otherwise.
 
-Tools available:
-- writeFile(path, contents): Create or update a file in WebContainer.
-- runCommand(command, args): Run terminal commands in WebContainer.
-- readFile(path): Read file contents from WebContainer.
-- listFiles(path): List files in WebContainer directory.
-- kvSet(key, value): Save data to Puter.js Key-Value store.
-- kvGet(key): Retrieve data from Puter.js Key-Value store.
-- fsWrite(path, contents): Write a file to Puter.js Cloud Filesystem.
-- fsRead(path): Read a file from Puter.js Cloud Filesystem.
+TOOL PROTOCOL:
+- When you perform an action (like writing a file or running a command), it will be rendered as a "Task" in the UI.
+- Use writeFile for all code generation.
+- Use runCommand for npm installs and starting the dev server.
+- Always check package.json to ensure dependencies are present.
 
-Workflow:
-1. Initialize package.json with react and vite.
-2. Install dependencies.
-3. Create src/main.jsx and src/App.jsx.
-4. Run 'npm run dev'.
+WORKFLOW:
+1. Initialize package.json with necessary dependencies (react, react-dom, lucide-react, etc.).
+2. Configure Vite and Tailwind.
+3. Create the folder structure and core components.
+4. Start the development server using 'npm run dev'.
+5. Provide a brief summary of the changes using Markdown.
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
@@ -129,8 +129,13 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         onUpdate({ ...assistantMessage });
       } else if (part.type === 'tool_use') {
         toolCall = part;
+        const toolCallId = toolCall.id;
+
+        // Add a marker in content to allow interleaved rendering
+        assistantMessage.content += `\n\n[TOOL_CALL:${toolCallId}]\n\n`;
+
         assistantMessage.toolCalls.push({
-          id: toolCall.id,
+          id: toolCallId,
           name: toolCall.name,
           input: toolCall.input,
           status: 'running'
