@@ -118,12 +118,12 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     setIsGenerating(true);
 
     let projectId = code;
-    if (projectId === 'new') {
-      projectId = Math.random().toString(36).substring(7);
+    if (!projectId || projectId === 'new') {
+      projectId = Math.random().toString(36).substring(2, 7).toUpperCase();
       const newProject = { id: projectId, name: generateRandomName(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       await saveProject(newProject);
       setProject(newProject);
-      navigate(`/workspace/${projectId}`, { replace: true });
+      navigate(`/project/${projectId}`, { replace: true });
     }
 
     const userMsg = { role: 'user', content, timestamp: new Date().toISOString() };
@@ -236,7 +236,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     <div className="h-screen flex flex-col bg-background text-white overflow-hidden font-sans">
       <header className="h-14 border-b border-gray-800 bg-surface flex items-center justify-between px-4 shrink-0 relative z-10">
         <div className="flex items-center space-x-4 overflow-hidden">
-          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all shrink-0">
+          <button onClick={() => navigate('/')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all shrink-0">
             <ChevronLeft size={20} />
           </button>
           <div className="flex items-center space-x-2 shrink-0">
