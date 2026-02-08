@@ -9,8 +9,9 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#0A0A0A] text-primary">
+      <div className="flex items-center justify-center h-screen bg-[#0A0A0A] text-primary flex-col gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Initializing Secure Environment...</p>
       </div>
     );
   }
