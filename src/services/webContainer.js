@@ -42,7 +42,9 @@ export async function getWebContainer() {
 
       if (isAlreadyBooted) {
         console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        throw new Error("WebContainer is already running. If you just refreshed, please wait a moment or use the 'Restart' button in the terminal.");
+        // Try to recover by returning the instance if we can find it? No, we can't.
+        // But we can suggest a hard refresh or using the Restart button.
+        throw new Error("WebContainer is already running in another tab or was not properly closed. Please close other tabs and use the 'Restart' button.");
       }
 
       let errorMsg = `WebContainer Boot Error: ${err.message}`;
@@ -102,6 +104,16 @@ export async function mount(files) {
  */
 export async function teardown() {
   console.log("ONYX: Tearing down WebContainer...");
+
+  // Try to get instance from promise if it's not yet captured
+  if (!window.__WEBCONTAINER_INSTANCE__ && window.__WEBCONTAINER_PROMISE__) {
+    try {
+      window.__WEBCONTAINER_INSTANCE__ = await window.__WEBCONTAINER_PROMISE__;
+    } catch (e) {
+      // Ignore if promise failed
+    }
+  }
+
   if (window.__WEBCONTAINER_INSTANCE__) {
     try {
       const wc = window.__WEBCONTAINER_INSTANCE__;

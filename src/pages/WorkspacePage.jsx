@@ -97,6 +97,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             addLog('3. If hosted, ensure the server sends:');
             addLog('   Cross-Origin-Embedder-Policy: require-corp');
             addLog('   Cross-Origin-Opener-Policy: same-origin');
+            addLog('Note: We have installed a Service Worker (coi-serviceworker) to help with this. If you see this error, please try a hard refresh (Ctrl+F5).');
           } else if (err.message.includes('already running')) {
             addLog('Tip: Only one WebContainer can run per origin. Close other tabs or use the "Restart" button above.');
           }
