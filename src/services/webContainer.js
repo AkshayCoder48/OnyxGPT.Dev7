@@ -27,6 +27,12 @@ export async function getWebContainer() {
     try {
       const instance = await WebContainer.boot();
       window.__WEBCONTAINER_INSTANCE__ = instance;
+
+      // Handle teardown on window unload
+      window.addEventListener('unload', () => {
+        instance.teardown();
+      });
+
       console.log("ONYX: WebContainer booted successfully.");
       return instance;
     } catch (err) {
@@ -83,4 +89,18 @@ export async function listFiles(path = '/') {
 export async function mount(files) {
   const wc = await getWebContainer();
   await wc.mount(files);
+}
+
+export async function teardownWebContainer() {
+  if (window.__WEBCONTAINER_INSTANCE__) {
+    console.log("ONYX: Tearing down WebContainer...");
+    await window.__WEBCONTAINER_INSTANCE__.teardown();
+    window.__WEBCONTAINER_INSTANCE__ = null;
+    window.__WEBCONTAINER_PROMISE__ = null;
+  }
+}
+
+export async function restartWebContainer() {
+  await teardownWebContainer();
+  return await getWebContainer();
 }

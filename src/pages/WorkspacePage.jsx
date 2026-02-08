@@ -15,13 +15,15 @@ import {
   Box,
   Github,
   Globe,
-  Loader2
+  Loader2,
+  RefreshCw,
+  Square
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
 import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
 import { generateRandomName } from '../utils/names';
-import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
+import { getWebContainer, listFiles, readFile as wcReadFile, restartWebContainer, teardownWebContainer } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
 
@@ -170,6 +172,29 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     addLog("Context attached: Filesystem snapshot taken.");
   };
 
+  const handleRestartWC = async () => {
+    if (confirm("Restart WebContainer? This will stop all running processes.")) {
+      addLog("Restarting WebContainer...");
+      try {
+        await restartWebContainer();
+        addLog("WebContainer restarted successfully.");
+        setPreviewUrl('');
+      } catch (err) {
+        addLog(`Restart Error: ${err.message}`);
+      }
+    }
+  };
+
+  const handleStopWC = async () => {
+    if (confirm("Stop WebContainer? All unsaved in-memory changes will be lost.")) {
+      addLog("Stopping WebContainer...");
+      await teardownWebContainer();
+      addLog("WebContainer stopped.");
+      setPreviewUrl('');
+      webContainerStarted.current = false;
+    }
+  };
+
   const handleDeploy = async () => {
     if (isDeploying) return;
     setIsDeploying(true);
@@ -250,6 +275,23 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         </div>
 
         <div className="flex items-center space-x-3 shrink-0">
+          <div className="flex items-center bg-background border border-gray-800 rounded-lg overflow-hidden mr-2">
+            <button
+              onClick={handleRestartWC}
+              title="Restart WebContainer"
+              className="p-2 hover:bg-white/5 text-gray-500 hover:text-primary transition-all border-r border-gray-800"
+            >
+              <RefreshCw size={16} />
+            </button>
+            <button
+              onClick={handleStopWC}
+              title="Stop WebContainer"
+              className="p-2 hover:bg-white/5 text-gray-500 hover:text-red-400 transition-all"
+            >
+              <Square size={16} />
+            </button>
+          </div>
+
           {ghConnected && (
             <button
               onClick={handleDeploy}

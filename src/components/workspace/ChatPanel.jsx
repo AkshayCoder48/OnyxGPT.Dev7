@@ -196,27 +196,30 @@ function renderAssistantContent(msg) {
 
 function ToolCallBlock({ tc }) {
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 my-4">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 my-2">
       <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
         tc.status === 'error'
-          ? 'bg-red-500/5 border-red-500/20 text-red-400'
+          ? 'bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
           : tc.status === 'success'
-            ? 'bg-primary/5 border-primary/20 text-primary shadow-[0_0_15px_rgba(0,228,204,0.05)]'
+            ? 'bg-primary/10 border-primary/30 text-primary shadow-[0_0_15px_rgba(0,228,204,0.1)]'
             : 'bg-white/5 border-white/10 text-gray-400'
       }`}>
-        <div className="flex items-center space-x-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-             tc.status === 'success' ? 'bg-primary/20' : 'bg-white/5'
+        <div className="flex items-center space-x-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform ${
+             tc.status === 'success' ? 'bg-primary/20 scale-105 shadow-glow' : 'bg-white/5'
           }`}>
             {getToolIcon(tc.name)}
           </div>
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider">
-              {tc.name === 'writeFile' ? 'Publishing File' :
-               tc.name === 'runCommand' ? 'Executing Task' :
-               tc.name === 'readFile' ? 'Analyzing Source' : 'Processing'}
+            <div className="flex items-center space-x-2">
+              <div className="text-[11px] font-bold uppercase tracking-[0.1em]">
+                {tc.name === 'writeFile' ? 'Publishing Artifact' :
+                 tc.name === 'runCommand' ? 'Executing Command' :
+                 tc.name === 'readFile' ? 'Reading Source' : 'System Task'}
+              </div>
+              {tc.status === 'success' && <div className="w-1 h-1 rounded-full bg-primary animate-pulse"></div>}
             </div>
-            <div className="text-[10px] opacity-60 font-mono truncate max-w-[200px]">
+            <div className="text-[10px] opacity-50 font-mono truncate max-w-[220px] mt-0.5">
               {tc.input?.path || (tc.input?.command ? `${tc.input.command} ${tc.input.args?.join(' ')}` : tc.name)}
             </div>
           </div>
