@@ -35,11 +35,11 @@ export async function getWebContainer() {
 
       if (isAlreadyBooted) {
         console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        throw new Error("WebContainer is already running. Please refresh the page to sync state.");
+        throw new Error("WebContainer is already running in another tab or was not properly closed. Please close other tabs or use the 'Restart' option.");
       }
 
-      if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
-        throw new Error("Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. WebContainer requires these to be set on the server.");
+      if ((err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) || !window.crossOriginIsolated) {
+        throw new Error("Security Error: Cross-Origin Isolation (COOP/COEP) is missing. WebContainer requires these headers to be set on the server.");
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;
@@ -83,4 +83,32 @@ export async function listFiles(path = '/') {
 export async function mount(files) {
   const wc = await getWebContainer();
   await wc.mount(files);
+}
+
+/**
+ * Tears down the current WebContainer instance and clears global references.
+ */
+export async function teardown() {
+  console.log("ONYX: Tearing down WebContainer...");
+  if (window.__WEBCONTAINER_INSTANCE__) {
+    try {
+      const wc = window.__WEBCONTAINER_INSTANCE__;
+      if (wc && typeof wc.teardown === 'function') {
+        await wc.teardown();
+      }
+    } catch (err) {
+      console.error("ONYX: Error during WebContainer teardown:", err);
+    }
+  }
+  window.__WEBCONTAINER_INSTANCE__ = null;
+  window.__WEBCONTAINER_PROMISE__ = null;
+  console.log("ONYX: WebContainer reference cleared.");
+}
+
+/**
+ * Restarts the WebContainer by tearing down the current instance and booting a new one.
+ */
+export async function restartWebContainer() {
+  await teardown();
+  return await getWebContainer();
 }
