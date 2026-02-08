@@ -16,7 +16,7 @@ if (typeof window === 'undefined') {
 
                 const newHeaders = new Headers(response.headers);
                 newHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
-                newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
+                newHeaders.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
 
                 return new Response(response.body, {
                     status: response.status,
@@ -30,7 +30,7 @@ if (typeof window === 'undefined') {
     (() => {
         const script = document.currentScript;
         const coepCustomHeader = script.getAttribute("coep") || "require-corp";
-        const coopCustomHeader = script.getAttribute("coop") || "same-origin";
+        const coopCustomHeader = script.getAttribute("coop") || "same-origin-allow-popups";
 
         if (window.crossOriginIsolated) return;
 
