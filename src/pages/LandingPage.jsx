@@ -1,24 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const LandingPage = () => {
-  const { user, loading, error, signIn, signOut } = useAuth();
+  const { user, signIn, signOut, error } = useAuth();
   const navigate = useNavigate();
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(true);
-
-  useEffect(() => {
-    if (!loading) setIsConnecting(false);
-  }, [loading]);
-
-  // Auto-redirect if already logged in
-  useEffect(() => {
-    if (user && !loading) {
-      console.log("ONYX: User authenticated, redirecting to dashboard...");
-      navigate('/dashboard');
-    }
-  }, [user, loading, navigate]);
 
   const handleStartBuilding = async (e) => {
     if (e) e.preventDefault();
@@ -28,15 +14,11 @@ const LandingPage = () => {
       return;
     }
 
-    setIsSigningIn(true);
     try {
-      // Call signIn - this triggers the popup
       await signIn();
-      // If successful, navigate
       navigate('/dashboard');
     } catch (err) {
       console.error("ONYX: Sign-in error:", err);
-      setIsSigningIn(false);
     }
   };
 
@@ -74,14 +56,9 @@ const LandingPage = () => {
             ) : (
               <button
                 onClick={handleStartBuilding}
-                className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2"
+                className="relative z-[110] bg-primary hover:bg-[#00c4b3] text-background-dark px-5 py-2.5 rounded-lg text-sm font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95"
               >
-                {(isSigningIn || (isConnecting && !error)) ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                    <span>{isConnecting ? 'Connecting...' : 'Starting...'}</span>
-                  </div>
-                ) : 'Start Building Today'}
+                Start Building Today
               </button>
             )}
           </div>
@@ -109,32 +86,9 @@ const LandingPage = () => {
                   onClick={handleStartBuilding}
                   className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 min-w-[240px]"
                 >
-                  {(isSigningIn || (isConnecting && !error)) ? (
-                    <>
-                      <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                      <span>{isConnecting ? 'Initializing...' : 'Connecting...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Start Building Today</span>
-                      <span className="material-symbols-outlined">bolt</span>
-                    </>
-                  )}
+                  <span>{user ? 'Go to Dashboard' : 'Start Building Today'}</span>
+                  <span className="material-symbols-outlined">bolt</span>
                 </button>
-                {error && (
-                  <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-top-1">
-                    <div className="flex items-center gap-2 text-red-400 text-xs font-bold">
-                      <span className="material-symbols-outlined text-sm">error</span>
-                      {error}
-                    </div>
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="text-primary text-[10px] font-bold uppercase tracking-widest hover:underline cursor-pointer"
-                    >
-                      Refresh Page to Retry
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -280,19 +234,8 @@ const LandingPage = () => {
                   onClick={handleStartBuilding}
                   className="bg-primary hover:bg-[#00c4b3] text-background-dark px-8 py-4 rounded-lg text-lg font-bold shadow-glow hover:shadow-glow-hover transition-all duration-300 cursor-pointer active:scale-95 min-w-[240px] flex items-center justify-center gap-2"
                 >
-                  {isSigningIn ? (
-                    <>
-                      <div className="w-5 h-5 rounded-full border-2 border-background-dark/20 border-t-background-dark animate-spin"></div>
-                      <span>Connecting...</span>
-                    </>
-                  ) : 'Start Building Today'}
+                  {user ? 'Go to Dashboard' : 'Start Building Today'}
                 </button>
-                {error && (
-                   <div className="flex flex-col items-center gap-1">
-                      <p className="text-red-400 text-[10px] font-bold">{error}</p>
-                      <button onClick={() => window.location.reload()} className="text-primary text-[9px] font-bold uppercase hover:underline">Retry</button>
-                   </div>
-                )}
               </div>
             </div>
           </div>

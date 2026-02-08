@@ -61,23 +61,10 @@ export function AuthProvider({ children }) {
   }, [init]);
 
   const signIn = async () => {
-    console.log("ONYX: puter.auth.signIn() invoked");
+    console.log("ONYX: puter.auth.signIn() direct call");
 
-    const checkPuter = () => window.puter && window.puter.auth && typeof window.puter.auth.signIn === 'function';
-
-    // Quick polling to catch Puter if it's almost ready
-    if (!checkPuter()) {
-      console.warn("ONYX: Puter not ready, polling in signIn...");
-      for (let i = 0; i < 60; i++) { // Wait up to 3 seconds
-        if (checkPuter()) break;
-        await new Promise(r => setTimeout(r, 50));
-      }
-    }
-
-    if (!checkPuter()) {
-      const msg = "Puter.js not loaded. Please refresh the page or check your connection.";
-      setError(msg);
-      throw new Error(msg);
+    if (!window.puter || !window.puter.auth) {
+      throw new Error("Puter.js not yet loaded.");
     }
 
     try {
@@ -85,11 +72,9 @@ export function AuthProvider({ children }) {
       const res = await window.puter.auth.signIn();
       const userData = await window.puter.auth.getUser();
       setUser(userData);
-      setLoading(false);
       return res;
     } catch (err) {
       console.error('ONYX: puter.auth.signIn() failed:', err);
-      setError(err.message || "Sign-in failed.");
       throw err;
     }
   };
