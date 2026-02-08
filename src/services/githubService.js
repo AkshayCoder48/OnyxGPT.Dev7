@@ -17,16 +17,23 @@ async function getHeaders() {
   };
 }
 
+async function fetchWithPuter(url, options = {}) {
+  if (window.puter && window.puter.http && window.puter.http.fetch) {
+    return await window.puter.http.fetch(url, options);
+  }
+  return await fetch(url, options);
+}
+
 export async function getUser() {
   const headers = await getHeaders();
-  const response = await fetch(`${GITHUB_API_BASE}/user`, { headers });
+  const response = await fetchWithPuter(`${GITHUB_API_BASE}/user`, { headers });
   if (!response.ok) throw new Error('Failed to fetch GitHub user');
-  return await response.ok ? response.json() : null;
+  return await response.json();
 }
 
 export async function createRepository(name, description = '', isPrivate = false) {
   const headers = await getHeaders();
-  const response = await fetch(`${GITHUB_API_BASE}/user/repos`, {
+  const response = await fetchWithPuter(`${GITHUB_API_BASE}/user/repos`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -49,7 +56,7 @@ export async function pushFiles(owner, repo, branch, files) {
   const headers = await getHeaders();
 
   // 1. Get the latest commit SHA of the branch
-  const branchResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/branches/${branch}`, { headers });
+  const branchResponse = await fetchWithPuter(`${GITHUB_API_BASE}/repos/${owner}/${repo}/branches/${branch}`, { headers });
   if (!branchResponse.ok) throw new Error('Failed to get branch info');
   const branchData = await branchResponse.json();
   const baseTreeSha = branchData.commit.commit.tree.sha;
@@ -58,7 +65,7 @@ export async function pushFiles(owner, repo, branch, files) {
   // 2. Create blobs for each file
   const tree = [];
   for (const file of files) {
-    const blobResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/blobs`, {
+    const blobResponse = await fetchWithPuter(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/blobs`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -77,7 +84,7 @@ export async function pushFiles(owner, repo, branch, files) {
   }
 
   // 3. Create a new tree
-  const treeResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees`, {
+  const treeResponse = await fetchWithPuter(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -89,7 +96,7 @@ export async function pushFiles(owner, repo, branch, files) {
   const treeData = await treeResponse.json();
 
   // 4. Create a new commit
-  const commitResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits`, {
+  const commitResponse = await fetchWithPuter(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -102,7 +109,7 @@ export async function pushFiles(owner, repo, branch, files) {
   const commitData = await commitResponse.json();
 
   // 5. Update the branch reference
-  const refResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+  const refResponse = await fetchWithPuter(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
     method: 'PATCH',
     headers,
     body: JSON.stringify({

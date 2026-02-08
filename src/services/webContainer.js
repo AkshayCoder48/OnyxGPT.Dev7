@@ -4,27 +4,34 @@ import { WebContainer } from '@webcontainer/api';
  * Singleton WebContainer instance management.
  * We use window to persist across HMR and multiple module evaluations.
  */
+let bootLock = false;
+
 export async function getWebContainer() {
   if (window.__WEBCONTAINER_INSTANCE__) {
     return window.__WEBCONTAINER_INSTANCE__;
   }
 
   if (window.__WEBCONTAINER_PROMISE__) {
-    try {
-      return await window.__WEBCONTAINER_PROMISE__;
-    } catch (e) {
-      window.__WEBCONTAINER_PROMISE__ = null;
+    return window.__WEBCONTAINER_PROMISE__;
+  }
+
+  if (bootLock) {
+    // Wait for the other process to finish and set the promise
+    while (bootLock && !window.__WEBCONTAINER_PROMISE__) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
+    if (window.__WEBCONTAINER_PROMISE__) return window.__WEBCONTAINER_PROMISE__;
   }
 
+  bootLock = true;
   console.log("ONYX: Initializing WebContainer boot sequence...");
-
-  if (!window.crossOriginIsolated) {
-    console.error("ONYX: Environment is NOT cross-origin isolated. WebContainer will fail.");
-  }
 
   window.__WEBCONTAINER_PROMISE__ = (async () => {
     try {
+      if (!window.crossOriginIsolated) {
+        console.warn("ONYX: Environment is NOT cross-origin isolated. Attempting boot anyway...");
+      }
+
       const instance = await WebContainer.boot();
       window.__WEBCONTAINER_INSTANCE__ = instance;
       console.log("ONYX: WebContainer booted successfully.");
@@ -34,16 +41,21 @@ export async function getWebContainer() {
                              err.message.includes('Only a single WebContainer instance can be booted');
 
       if (isAlreadyBooted) {
-        console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        throw new Error("WebContainer is already running. Please refresh the page to sync state.");
+        console.warn("ONYX: WebContainer already booted according to error message.");
+        if (window.__WEBCONTAINER_INSTANCE__) return window.__WEBCONTAINER_INSTANCE__;
+        // If we still don't have it, we are in a broken state.
+        // We'll throw a friendly error but keep the promise so we don't spam boot().
+        throw new Error("WebContainer is already running in another part of the application. Please refresh to sync.");
       }
 
       if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
-        throw new Error("Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. WebContainer requires these to be set on the server.");
+        throw new Error("SharedArrayBuffer Error: COOP/COEP headers are missing. Check your server configuration.");
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;
       throw err;
+    } finally {
+      bootLock = false;
     }
   })();
 

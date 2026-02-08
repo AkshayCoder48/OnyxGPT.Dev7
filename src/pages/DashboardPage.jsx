@@ -20,8 +20,21 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  Code2,
+  Layers,
+  Zap,
+  Globe,
+  Sparkles,
+  Palette
 } from 'lucide-react';
+
+const TEMPLATES = [
+  { id: 'react-vite', name: 'React + Vite', description: 'Modern React starter with Vite & Tailwind', icon: <Zap className="text-yellow-400" />, prompt: 'Initialize a React project using Vite and Tailwind CSS. Create a modern, responsive layout.' },
+  { id: 'nextjs', name: 'Next.js 14', description: 'Full-stack Next.js with App Router', icon: <Layers className="text-white" />, prompt: 'Set up a Next.js 14 project with TypeScript and App Router. Include a basic API route and a dashboard layout.' },
+  { id: 'express', name: 'Express API', description: 'Backend-ready Express.js server', icon: <Code2 className="text-green-400" />, prompt: 'Create a Node.js Express server with CORS, JSON parsing, and a few example CRUD routes.' },
+  { id: 'portfolio', name: 'AI Portfolio', description: 'Personal portfolio for AI engineers', icon: <Palette className="text-purple-400" />, prompt: 'Build a sleek, dark-themed personal portfolio for an AI engineer with a 3D glassmorphism style.' }
+];
 
 export default function DashboardPage() {
   const { user, signIn, signOut, loading: authLoading } = useAuth();
@@ -33,16 +46,11 @@ export default function DashboardPage() {
   const [ghUser, setGhUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const templates = [
-    { id: 'react-basic', name: 'React Basic', description: 'Vite + React + Tailwind', icon: '⚛️' },
-    { id: 'nextjs-starter', name: 'Next.js Starter', description: 'Next.js + Tailwind', icon: '▲' },
-    { id: 'node-api', name: 'Node.js API', description: 'Express + Puter KV', icon: '🟢' },
-  ];
-
   useEffect(() => {
     if (user) {
       loadInitialData();
     } else if (!authLoading) {
+      // If auth finished and no user, we will redirect via the other useEffect
       setLoading(false);
     }
   }, [user, authLoading]);
@@ -93,12 +101,12 @@ export default function DashboardPage() {
     const newProject = {
       id,
       name: template ? `${template.name} - ${generateRandomName()}` : generateRandomName(),
-      template: template ? template.id : null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      todos: []
     };
     await saveProject(newProject);
-    navigate(`/workspace/${id}`);
+    navigate(`/workspace/${id}`, { state: { initialPrompt: template?.prompt || '' } });
   };
 
   const handleDeleteProject = async (id) => {
@@ -109,32 +117,40 @@ export default function DashboardPage() {
     }
   };
 
-  if (authLoading || loading) {
+  // Redirection logic
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
+
+  if (authLoading || (user && loading)) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-12 h-12 text-primary animate-spin" />
-          <p className="text-gray-500 font-mono text-sm">Loading Environment...</p>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 blur-[100px] rounded-full"></div>
+        <div className="flex flex-col items-center space-y-6 z-10">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-xl border-2 border-primary/20 border-t-primary animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Grid className="text-primary w-6 h-6 animate-pulse" />
+            </div>
+          </div>
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-white font-display font-bold text-xl tracking-tight">OnyxGPT</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"></span>
+            </div>
+            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-gray-500 animate-pulse">
+              {authLoading ? 'Verifying Session...' : 'Loading Projects...'}
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="digital-glow p-12 bg-surface rounded-2xl border border-gray-800 max-w-md w-full">
-           <Terminal size={64} className="text-primary mx-auto mb-6 animate-pulse" />
-           <h1 className="text-3xl font-display font-bold mb-4 text-white">Dashboard Locked</h1>
-           <p className="text-gray-400 mb-8 leading-relaxed">
-             Please sign in to access your projects and templates.
-           </p>
-           <button onClick={signIn} className="w-full bg-primary text-background font-bold px-8 py-4 rounded-xl hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,228,204,0.3)]">
-             Sign In with Puter
-           </button>
-        </div>
-      </div>
-    );
+     return <div className="min-h-screen bg-background"></div>; // Prevents flash of content before redirect
   }
 
   const filteredProjects = projects.filter(p =>
@@ -142,9 +158,16 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background flex text-white font-sans">
+    <div className="min-h-screen bg-background flex text-white font-sans relative overflow-hidden">
+      {/* Fancy Background Effects */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-0 opacity-20">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full"></div>
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+      </div>
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-800 bg-surface flex flex-col shrink-0">
+      <aside className="w-64 border-r border-gray-800 bg-surface/80 backdrop-blur-xl flex flex-col shrink-0 z-10">
         <div className="p-6 flex items-center space-x-3 mb-4">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-background font-bold">O</div>
           <span className="font-display font-bold text-xl">Onyx<span className="text-primary">GPT</span></span>
@@ -160,7 +183,7 @@ export default function DashboardPage() {
           <SidebarButton
             active={activeTab === 'templates'}
             onClick={() => setActiveTab('templates')}
-            icon={<Grid size={18} />}
+            icon={<Layout size={18} />}
             label="Templates"
           />
           <SidebarButton
@@ -172,7 +195,7 @@ export default function DashboardPage() {
         </nav>
 
         <div className="p-4 border-t border-gray-800 mt-auto">
-          <div className="flex items-center space-x-3 p-2 bg-background rounded-xl border border-gray-800">
+          <div className="flex items-center space-x-3 p-2 bg-background/50 rounded-xl border border-gray-800">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
               {user.username?.substring(0, 2).toUpperCase()}
             </div>
@@ -180,17 +203,16 @@ export default function DashboardPage() {
               <div className="text-xs font-bold truncate">{user.username}</div>
               <button onClick={signOut} className="text-[10px] text-gray-500 hover:text-red-400 transition-colors">Sign Out</button>
             </div>
-            <SettingsIcon size={14} className="text-gray-500 cursor-pointer hover:text-white" />
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-surface/50 backdrop-blur-md sticky top-0 z-10">
+      <main className="flex-1 flex flex-col overflow-hidden z-10">
+        <header className="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-surface/30 backdrop-blur-md sticky top-0 z-10">
           <h2 className="font-display font-bold text-xl uppercase tracking-widest text-gray-400">
             {activeTab === 'projects' && 'Your Projects'}
-            {activeTab === 'templates' && 'Starter Templates'}
+            {activeTab === 'templates' && 'Explore Templates'}
             {activeTab === 'github' && 'GitHub Integration'}
           </h2>
 
@@ -217,7 +239,7 @@ export default function DashboardPage() {
 
         <div className="flex-1 overflow-y-auto p-8">
           {activeTab === 'projects' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {filteredProjects.map(project => (
                 <ProjectCard
                   key={project.id}
@@ -227,30 +249,33 @@ export default function DashboardPage() {
                 />
               ))}
               {filteredProjects.length === 0 && (
-                <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-800 rounded-3xl">
-                  <Folder size={48} className="mx-auto text-gray-700 mb-4" />
-                  <p className="text-gray-500">No projects found. Create your first one!</p>
+                <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-800 rounded-3xl group hover:border-primary/50 transition-all cursor-pointer" onClick={() => handleCreateProject()}>
+                  <Folder size={48} className="mx-auto text-gray-700 mb-4 group-hover:text-primary transition-colors" />
+                  <p className="text-gray-500 group-hover:text-gray-300">No projects found. Create your first one!</p>
                 </div>
               )}
             </div>
           )}
 
           {activeTab === 'templates' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map(template => (
-                <div
-                  key={template.id}
-                  onClick={() => handleCreateProject(template)}
-                  className="bg-surface border border-gray-800 rounded-2xl p-6 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer group"
-                >
-                  <div className="text-4xl mb-4">{template.icon}</div>
-                  <h3 className="font-bold text-lg mb-1">{template.name}</h3>
-                  <p className="text-sm text-gray-500 mb-4">{template.description}</p>
-                  <div className="flex items-center text-xs text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    Use Template <Plus size={12} className="ml-1" />
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               {TEMPLATES.map(template => (
+                 <div
+                   key={template.id}
+                   onClick={() => handleCreateProject(template)}
+                   className="bg-surface border border-gray-800 rounded-2xl p-6 hover:border-primary/50 transition-all cursor-pointer group relative overflow-hidden"
+                 >
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-primary/10 transition-colors"></div>
+                    <div className="w-12 h-12 bg-background rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-inner">
+                       {template.icon}
+                    </div>
+                    <h3 className="text-lg font-bold mb-2 text-white group-hover:text-primary transition-colors">{template.name}</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed mb-6">{template.description}</p>
+                    <div className="flex items-center text-[10px] font-bold text-primary uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                       Use Template <Plus size={12} className="ml-1" />
+                    </div>
+                 </div>
+               ))}
             </div>
           )}
 
@@ -337,18 +362,50 @@ function SidebarButton({ active, onClick, icon, label }) {
 
 function ProjectCard({ project, onClick, onDelete }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [isPinned, setIsPinned] = useState(project.isPinned || false);
+
+  const handleExport = (e) => {
+    e.stopPropagation();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `${project.name || 'project'}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    setShowMenu(false);
+  };
+
+  const togglePin = async (e) => {
+    e.stopPropagation();
+    const newPinned = !isPinned;
+    setIsPinned(newPinned);
+
+    // Save to Puter KV
+    const projects = await getProjects();
+    const index = projects.findIndex(p => p.id === project.id);
+    if (index >= 0) {
+      projects[index].isPinned = newPinned;
+      if (window.puter) {
+        await window.puter.kv.set('onyx_projects', JSON.stringify(projects));
+      }
+    }
+
+    setShowMenu(false);
+  };
 
   return (
     <div
-      className="bg-surface border border-gray-800 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all cursor-pointer relative"
+      className={`bg-surface border ${isPinned ? 'border-primary/40 shadow-[0_0_15px_rgba(0,228,204,0.1)]' : 'border-gray-800'} rounded-2xl overflow-hidden group hover:border-primary/30 transition-all cursor-pointer relative hover:translate-y-[-4px] duration-300`}
       onClick={onClick}
     >
-      <div className="h-32 bg-background/50 flex items-center justify-center">
-        <Folder size={40} className="text-gray-700 group-hover:text-primary/50 transition-colors" />
+      <div className="h-32 bg-background/50 flex items-center justify-center relative">
+        <Folder size={40} className={`${isPinned ? 'text-primary' : 'text-gray-700'} group-hover:text-primary/50 transition-colors`} />
+        {isPinned && <Pin size={14} className="absolute top-4 right-4 text-primary fill-primary" />}
       </div>
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between bg-surface">
         <div>
-          <h3 className="font-bold truncate w-40">{project?.name || 'Untitled'}</h3>
+          <h3 className="font-bold truncate w-40 text-gray-200 group-hover:text-white transition-colors">{project?.name || 'Untitled'}</h3>
           <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase tracking-tighter">
             Updated {new Date(project?.updatedAt || project?.createdAt || Date.now()).toLocaleDateString()}
           </p>
@@ -359,15 +416,15 @@ function ProjectCard({ project, onClick, onDelete }) {
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1 hover:bg-white/10 rounded-lg transition-colors text-gray-500 hover:text-white"
           >
             <MoreVertical size={16} />
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 bottom-full mb-2 w-32 bg-background border border-gray-800 rounded-xl shadow-2xl z-20 overflow-hidden">
-               <MenuButton icon={<Pin size={12} />} label="Pin" />
-               <MenuButton icon={<Download size={12} />} label="Export" />
+            <div className="absolute right-0 bottom-full mb-2 w-32 bg-background border border-gray-800 rounded-xl shadow-2xl z-20 overflow-hidden backdrop-blur-md">
+               <MenuButton icon={<Pin size={12} className={isPinned ? 'fill-primary text-primary' : ''} />} label={isPinned ? "Unpin" : "Pin"} onClick={togglePin} />
+               <MenuButton icon={<Download size={12} />} label="Export" onClick={handleExport} />
                <MenuButton
                   icon={<Trash2 size={12} />}
                   label="Delete"
