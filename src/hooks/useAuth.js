@@ -3,10 +3,14 @@ import { useState, useEffect, useCallback } from 'react';
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [puterLoaded, setPuterLoaded] = useState(!!window.puter);
 
   const checkAuth = useCallback(async () => {
-    if (window.puter) {
-      try {
+    try {
+      if (window.puterReady) await window.puterReady;
+
+      if (window.puter) {
+        setPuterLoaded(true);
         const isSignedIn = await window.puter.auth.isSignedIn();
         if (isSignedIn) {
           const userData = await window.puter.auth.getUser();
@@ -14,29 +18,28 @@ export function useAuth() {
         } else {
           setUser(null);
         }
-      } catch (err) {
-        console.error('Auth check failed:', err);
       }
+    } catch (err) {
+      console.error('Auth check failed:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     checkAuth();
-
-    // Puter doesn't have an easy "onAuthChange" listener in v2 docs sometimes,
-    // but we can poll or rely on explicit actions.
   }, [checkAuth]);
 
   const signIn = async () => {
     if (window.puter) {
       try {
-        const userData = await window.puter.auth.signIn();
-        setUser(userData);
-        return userData;
+        // Redirecting auth as requested
+        return window.puter.auth.signIn();
       } catch (err) {
         console.error('Sign in failed:', err);
       }
+    } else {
+        alert("Puter.js is still loading. Please wait a moment.");
     }
   };
 

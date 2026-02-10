@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Brain, Zap, Bug, RotateCcw, Paperclip, Clock, Check, AlertCircle, Cpu } from 'lucide-react';
+import { Send, Sparkles, Brain, Zap, Bug, RotateCcw, Paperclip, Clock, Check, AlertCircle, Cpu, FileJson, FileCode, FileText, Globe, Box, Terminal } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function ChatPanel({
   messages,
@@ -57,35 +59,15 @@ export default function ChatPanel({
               <div className={`inline-block p-3 rounded-2xl text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-primary text-background font-medium shadow-[0_4px_12px_rgba(0,228,204,0.2)] rounded-tr-none'
-                  : 'bg-background border border-gray-800 text-gray-200 rounded-tl-none'
+                  : 'bg-background border border-gray-800 text-gray-200 rounded-tl-none prose prose-invert prose-sm max-w-none'
               }`}>
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                {msg.role === 'user' ? (
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                ) : (
+                  renderAssistantContent(msg)
+                )}
               </div>
 
-              {msg.toolCalls && msg.toolCalls.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {msg.toolCalls.map((tc, j) => (
-                    <div key={j} className={`flex items-center space-x-2 text-[10px] font-mono p-1.5 rounded border transition-all ${
-                      tc.status === 'error'
-                        ? 'bg-red-500/10 border-red-500/20 text-red-400'
-                        : tc.status === 'success'
-                          ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                          : 'bg-primary/5 border-primary/10 text-primary'
-                    }`}>
-                      {tc.status === 'running' ? (
-                        <Zap size={10} className="animate-pulse" />
-                      ) : tc.status === 'success' ? (
-                        <Check size={10} />
-                      ) : (
-                        <AlertCircle size={10} />
-                      )}
-                      <span className="font-bold">{tc?.name || "tool"}</span>
-                      <span className="opacity-60 truncate">({Object.keys(tc.input || {}).join(', ')})</span>
-                      {tc.result && <span className="opacity-80 ml-1 border-l border-white/10 pl-2 truncate">{tc.result}</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         ))}
@@ -149,6 +131,112 @@ export default function ChatPanel({
             <Send size={18} />
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function getToolIcon(name) {
+  switch (name) {
+    case 'writeFile': return <FileCode size={16} />;
+    case 'runCommand': return <Terminal size={16} />;
+    case 'readFile': return <FileText size={16} />;
+    case 'listFiles': return <Box size={16} />;
+    case 'deploy': return <Globe size={16} />;
+    case 'kvSet':
+    case 'fsWrite': return <FileJson size={16} />;
+    default: return <Cpu size={16} />;
+  }
+}
+
+function renderAssistantContent(msg) {
+  const parts = msg.content.split(/(\[TOOL_CALL:[^\]]+\])/g);
+
+  return (
+    <div className="space-y-4">
+      {parts.map((part, i) => {
+        const match = part.match(/\[TOOL_CALL:([^\]]+)\]/);
+        if (match) {
+          const toolCallId = match[1];
+          const tc = msg.toolCalls?.find(t => t.id === toolCallId);
+          if (!tc) return null;
+          return <ToolCallBlock key={i} tc={tc} />;
+        }
+
+        if (!part.trim()) return null;
+
+        return (
+          <ReactMarkdown
+            key={i}
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({children}) => <p className="mb-2 last:mb-0 leading-normal">{children}</p>,
+              pre: ({children}) => <pre className="bg-black/30 p-2 rounded-lg my-2 overflow-x-auto border border-white/5">{children}</pre>,
+              code: ({node, inline, className, children, ...props}) => (
+                <code className={`${className} ${inline ? 'bg-white/10 px-1 rounded' : 'block text-xs font-mono'}`} {...props}>
+                  {children}
+                </code>
+              ),
+              ul: ({children}) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+              ol: ({children}) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+            }}
+          >
+            {part}
+          </ReactMarkdown>
+        );
+      })}
+
+      {/* Render any tool calls that weren't matched in content (backup) */}
+      {msg.toolCalls?.filter(tc => !msg.content.includes(`[TOOL_CALL:${tc.id}]`)).map((tc, i) => (
+        <ToolCallBlock key={`extra-${i}`} tc={tc} />
+      ))}
+    </div>
+  );
+}
+
+function ToolCallBlock({ tc }) {
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 my-2">
+      <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+        tc.status === 'error'
+          ? 'bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+          : tc.status === 'success'
+            ? 'bg-primary/10 border-primary/30 text-primary shadow-[0_0_15px_rgba(0,228,204,0.1)]'
+            : 'bg-white/5 border-white/10 text-gray-400'
+      }`}>
+        <div className="flex items-center space-x-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform ${
+             tc.status === 'success' ? 'bg-primary/20 scale-105 shadow-glow' : 'bg-white/5'
+          }`}>
+            {getToolIcon(tc.name)}
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <div className="text-[11px] font-bold uppercase tracking-[0.1em]">
+                {tc.name === 'writeFile' ? 'Publishing Artifact' :
+                 tc.name === 'runCommand' ? 'Executing Command' :
+                 tc.name === 'readFile' ? 'Reading Source' : 'System Task'}
+              </div>
+              {tc.status === 'success' && <div className="w-1 h-1 rounded-full bg-primary animate-pulse"></div>}
+            </div>
+            <div className="text-[10px] opacity-50 font-mono truncate max-w-[220px] mt-0.5">
+              {tc.input?.path || (tc.input?.command ? `${tc.input.command} ${tc.input.args?.join(' ')}` : tc.name)}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center">
+          {tc.status === 'running' ? (
+            <div className="flex items-center space-x-2">
+               <span className="text-[9px] font-bold animate-pulse">RUNNING</span>
+               <Zap size={12} className="animate-pulse" />
+            </div>
+          ) : tc.status === 'success' ? (
+            <Check size={14} className="text-primary" />
+          ) : (
+            <AlertCircle size={14} className="text-red-400" />
+          )}
+        </div>
       </div>
     </div>
   );

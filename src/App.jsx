@@ -1,17 +1,28 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LandingPage from './pages/LandingPage';
+import ProjectLandingPage from './pages/ProjectLandingPage';
 import WorkspacePage from './pages/WorkspacePage';
-import DashboardPage from './pages/DashboardPage';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
   const { user, loading, signIn, signOut } = useAuth();
+  const [showLoading, setShowLoading] = React.useState(false);
 
-  if (loading) {
+  React.useEffect(() => {
+    let timer;
+    if (loading) {
+      timer = setTimeout(() => setShowLoading(true), 500);
+    } else {
+      setShowLoading(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  if (loading && showLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background text-primary">
+      <div className="flex items-center justify-center h-screen bg-[#0A0A0A] text-primary flex-col gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Initializing Secure Environment...</p>
       </div>
     );
   }
@@ -19,10 +30,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/workspace/:code" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
-        <Route path="/workspace" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
+        <Route path="/" element={<ProjectLandingPage />} />
+        <Route path="/project/:code" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
       </Routes>
     </Router>
   );

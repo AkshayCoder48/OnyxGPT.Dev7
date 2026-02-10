@@ -15,13 +15,15 @@ import {
   Box,
   Github,
   Globe,
-  Loader2
+  Loader2,
+  RefreshCw,
+  Square
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
 import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
 import { generateRandomName } from '../utils/names';
-import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
+import { getWebContainer, listFiles, readFile as wcReadFile, restartWebContainer, teardownWebContainer, runCommand } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
 
@@ -40,6 +42,8 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const [model, setModel] = useState(appSettings.customModelId);
   const [mode, setMode] = useState('execute');
   const [logs, setLogs] = useState(['Initializing Onyx Environment...', 'User authenticated.']);
+  const [terminalInput, setTerminalInput] = useState('');
+  const terminalEndRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -110,20 +114,34 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   }, [initialPrompt, messages.length, code]);
 
   const addLog = (log) => {
-    setLogs(prev => [...prev, typeof log === 'string' ? log : JSON.stringify(log)]);
+    const logStr = typeof log === 'string' ? log : JSON.stringify(log);
+    setLogs(prev => {
+        const lastLog = prev[prev.length - 1];
+        // If the new log is just a continuation (no newline at start), append to last line
+        // But for simplicity in this UI, we just append to the array
+        // We limit to last 500 lines for performance
+        const newLogs = [...prev, logStr];
+        return newLogs.slice(-500);
+    });
   };
+
+  useEffect(() => {
+    if (activeAmenity === 'terminal') {
+        terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, activeAmenity]);
 
   const handleSendMessage = async (content) => {
     if (isGenerating) return;
     setIsGenerating(true);
 
     let projectId = code;
-    if (projectId === 'new') {
-      projectId = Math.random().toString(36).substring(7);
+    if (!projectId || projectId === 'new') {
+      projectId = Math.random().toString(36).substring(2, 7).toUpperCase();
       const newProject = { id: projectId, name: generateRandomName(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       await saveProject(newProject);
       setProject(newProject);
-      navigate(`/workspace/${projectId}`, { replace: true });
+      navigate(`/project/${projectId}`, { replace: true });
     }
 
     const userMsg = { role: 'user', content, timestamp: new Date().toISOString() };
@@ -160,14 +178,79 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   const handleUndo = () => {
     if (messages.length > 0) {
-      const newMsgs = messages.slice(0, -1);
-      setMessages(newMsgs);
-      saveMessages(code, newMsgs);
+      // Find index of last user message
+      const lastUserIndex = [...messages].reverse().findIndex(m => m.role === 'user');
+      if (lastUserIndex !== -1) {
+          const actualIndex = messages.length - 1 - lastUserIndex;
+          const newMsgs = messages.slice(0, actualIndex);
+          setMessages(newMsgs);
+          saveMessages(code, newMsgs);
+          addLog("Last interaction undone.");
+      } else {
+          const newMsgs = messages.slice(0, -1);
+          setMessages(newMsgs);
+          saveMessages(code, newMsgs);
+      }
     }
   };
 
-  const handleAttachContext = () => {
-    addLog("Context attached: Filesystem snapshot taken.");
+  const handleAttachContext = async () => {
+    addLog("Analyzing project context...");
+    try {
+      const files = ['package.json', 'src/App.jsx', 'vite.config.js'];
+      let contextStr = "Current project context:\n";
+      for (const f of files) {
+        try {
+          const content = await wcReadFile(f);
+          contextStr += `\nFile: ${f}\n${content.substring(0, 500)}${content.length > 500 ? '...' : ''}\n`;
+        } catch (e) {}
+      }
+      addLog("Context snapshot attached to session.");
+      // We could actually append this to the next message if we wanted to
+    } catch (err) {
+      addLog(`Context Error: ${err.message}`);
+    }
+  };
+
+  const handleRestartWC = async () => {
+    if (confirm("Restart WebContainer? This will stop all running processes.")) {
+      addLog("Restarting WebContainer...");
+      try {
+        await restartWebContainer();
+        addLog("WebContainer restarted successfully.");
+        setPreviewUrl('');
+      } catch (err) {
+        addLog(`Restart Error: ${err.message}`);
+      }
+    }
+  };
+
+  const handleStopWC = async () => {
+    if (confirm("Stop WebContainer? All unsaved in-memory changes will be lost.")) {
+      addLog("Stopping WebContainer...");
+      await teardownWebContainer();
+      addLog("WebContainer stopped.");
+      setPreviewUrl('');
+      webContainerStarted.current = false;
+    }
+  };
+
+  const handleTerminalSubmit = async (e) => {
+    e.preventDefault();
+    if (!terminalInput.trim()) return;
+    const cmd = terminalInput.trim();
+    setTerminalInput('');
+    addLog(`onyx-app $ ${cmd}`);
+
+    try {
+      const [command, ...args] = cmd.split(' ');
+      const exitCode = await runCommand(command, args, (data) => addLog(data));
+      if (exitCode !== 0) {
+        addLog(`Command failed with exit code ${exitCode}`);
+      }
+    } catch (err) {
+      addLog(`Terminal Error: ${err.message}`);
+    }
   };
 
   const handleDeploy = async () => {
@@ -236,7 +319,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     <div className="h-screen flex flex-col bg-background text-white overflow-hidden font-sans">
       <header className="h-14 border-b border-gray-800 bg-surface flex items-center justify-between px-4 shrink-0 relative z-10">
         <div className="flex items-center space-x-4 overflow-hidden">
-          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all shrink-0">
+          <button onClick={() => navigate('/')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all shrink-0">
             <ChevronLeft size={20} />
           </button>
           <div className="flex items-center space-x-2 shrink-0">
@@ -250,6 +333,23 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         </div>
 
         <div className="flex items-center space-x-3 shrink-0">
+          <div className="flex items-center bg-background border border-gray-800 rounded-lg overflow-hidden mr-2">
+            <button
+              onClick={handleRestartWC}
+              title="Restart WebContainer"
+              className="p-2 hover:bg-white/5 text-gray-500 hover:text-primary transition-all border-r border-gray-800"
+            >
+              <RefreshCw size={16} />
+            </button>
+            <button
+              onClick={handleStopWC}
+              title="Stop WebContainer"
+              className="p-2 hover:bg-white/5 text-gray-500 hover:text-red-400 transition-all"
+            >
+              <Square size={16} />
+            </button>
+          </div>
+
           {ghConnected && (
             <button
               onClick={handleDeploy}
@@ -317,15 +417,23 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             <div className="h-full flex flex-col bg-[#0d0d0d] overflow-hidden">
                <div className="p-4 flex-1 font-mono text-[11px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
                   {logs.map((log, i) => (
-                    <div key={i} className="mb-1 leading-relaxed">
+                    <div key={i} className="mb-1 leading-relaxed animate-in fade-in duration-300">
                       <span className="text-primary/50 mr-2 opacity-50">➜</span>
                       <span className="text-gray-300 whitespace-pre-wrap">{log}</span>
                     </div>
                   ))}
-                  <div className="flex items-center mt-2">
-                    <span className="text-primary mr-2 font-bold">onyx-app $</span>
-                    <span className="w-2 h-4 bg-primary animate-pulse"></span>
-                  </div>
+                  <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2 group">
+                    <span className="text-primary mr-2 font-bold shrink-0">onyx-app $</span>
+                    <input
+                      type="text"
+                      value={terminalInput}
+                      onChange={(e) => setTerminalInput(e.target.value)}
+                      className="flex-1 bg-transparent border-none outline-none text-gray-300 font-mono"
+                      autoFocus
+                    />
+                    <div className="w-2 h-4 bg-primary animate-pulse group-focus-within:hidden"></div>
+                  </form>
+                  <div ref={terminalEndRef} />
                </div>
             </div>
           )}

@@ -11,8 +11,9 @@ async function getHeaders() {
   if (!token) throw new Error('GitHub token not found. Please connect your GitHub account.');
 
   return {
-    'Authorization': `token ${token}`,
-    'Accept': 'application/vnd.github.v3+json',
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
     'Content-Type': 'application/json',
   };
 }
@@ -20,8 +21,11 @@ async function getHeaders() {
 export async function getUser() {
   const headers = await getHeaders();
   const response = await fetch(`${GITHUB_API_BASE}/user`, { headers });
-  if (!response.ok) throw new Error('Failed to fetch GitHub user');
-  return await response.ok ? response.json() : null;
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to fetch GitHub user');
+  }
+  return await response.json();
 }
 
 export async function createRepository(name, description = '', isPrivate = false) {
