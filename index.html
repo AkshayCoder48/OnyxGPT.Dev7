@@ -4,11 +4,41 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="/coi-serviceworker.js"></script>
+    <script>
+      (function() {
+        console.log("[SYSTEM] Initial crossOriginIsolated:", window.crossOriginIsolated);
+
+        if (window.crossOriginIsolated) {
+          console.log("%c[SYSTEM] Cross-Origin Isolation ENABLED", "color: green; font-weight: bold;");
+        } else {
+          console.warn("%c[SYSTEM] Cross-Origin Isolation DISABLED. WebContainers may fail.", "color: orange; font-weight: bold;");
+        }
+
+        window.addEventListener('load', () => {
+          console.log("[SYSTEM] Window loaded. Checking Puter.js...");
+          if (window.puter) {
+            console.log("%c[SYSTEM] Puter.js successfully loaded.", "color: green;");
+          } else {
+            console.error("%c[SYSTEM] Puter.js failed to load! Check for 'ERR_BLOCKED_BY_RESPONSE' in Network tab.", "color: red; font-weight: bold;");
+            if (window.crossOriginIsolated) {
+               console.info("[SYSTEM] Tip: Since isolation is ON, Puter.js must be loaded with 'crossorigin' attribute and the server must support CORS.");
+            }
+          }
+        });
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            console.log("[SYSTEM] Service Worker ready:", reg.scope);
+          });
+        }
+      })();
+    </script>
     <title>OnyxGPT.dev | AI-Powered IDE</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet" crossorigin>
     <!-- Puter.js -->
     <script src="https://js.puter.com/v2/"></script>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />

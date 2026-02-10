@@ -27,7 +27,10 @@ WORKFLOW:
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
-  if (!window.puter) return;
+  if (!window.puter) {
+    onLog("Error: Puter.js not found. Please check your internet connection or browser security settings.");
+    return;
+  }
 
   const tools = [
     {
@@ -153,23 +156,47 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
     try {
       if (toolCall.name === 'writeFile') {
         onLog(`onyx-app $ write ${args.path}`);
-        await wc.writeFile(args.path, args.contents);
-        result = `File written to ${args.path}.`;
+        try {
+          await wc.writeFile(args.path, args.contents);
+          result = `File written to ${args.path}.`;
+          onLog(`[SYSTEM] File write successful.`);
+        } catch (writeErr) {
+          onLog(`[SYSTEM] File write FAILED: ${writeErr.message}`);
+          throw writeErr;
+        }
       } else if (toolCall.name === 'runCommand') {
         const fullCmd = `${args.command} ${args.args.join(' ')}`;
         onLog(`onyx-app $ ${fullCmd}`);
 
         if (args.command === 'npm' && args.args.includes('dev')) {
+          onLog(`[SYSTEM] Starting development server...`);
           wc.runCommand(args.command, args.args, (data) => {
             onLog(data);
             const match = data.match(/http:\/\/localhost:\d+/);
-            if (match) options.onUrlReady(match[0]);
+            if (match) {
+              onLog(`[SYSTEM] Dev server detected at ${match[0]}`);
+              options.onUrlReady(match[0]);
+            }
           });
           result = "Development server started.";
         } else {
-          const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
-          result = `Command finished with exit code ${exitCode}.`;
-          if (exitCode !== 0) status = 'error';
+          onLog(`[SYSTEM] Running command...`);
+          try {
+            const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
+            result = `Command finished with exit code ${exitCode}.`;
+            if (exitCode !== 0) {
+              status = 'error';
+              onLog(`[SYSTEM] Command failed with code ${exitCode}`);
+            } else {
+              onLog(`[SYSTEM] Command successful.`);
+            }
+          } catch (cmdErr) {
+             onLog(`[SYSTEM] CRITICAL: Command execution failed: ${cmdErr.message}`);
+             if (cmdErr.message.includes('WebContainer')) {
+               onLog(`[SYSTEM] Tip: This might be a WebContainer lifecycle error. Try clicking "Restart" in the terminal header.`);
+             }
+             throw cmdErr;
+          }
         }
       } else if (toolCall.name === 'kvSet') {
         onLog(`onyx-app $ kv set ${args.key}`);

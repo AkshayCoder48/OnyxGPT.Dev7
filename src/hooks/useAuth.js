@@ -5,18 +5,23 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
+    console.log("[useAuth] Checking auth status...");
     if (window.puter) {
       try {
         const isSignedIn = await window.puter.auth.isSignedIn();
+        console.log("[useAuth] Is signed in:", isSignedIn);
         if (isSignedIn) {
           const userData = await window.puter.auth.getUser();
+          console.log("[useAuth] User data received:", userData.username);
           setUser(userData);
         } else {
           setUser(null);
         }
       } catch (err) {
-        console.error('Auth check failed:', err);
+        console.error('[useAuth] Auth check failed:', err);
       }
+    } else {
+      console.warn("[useAuth] Puter.js not found during auth check.");
     }
     setLoading(false);
   }, []);
@@ -29,14 +34,19 @@ export function useAuth() {
   }, [checkAuth]);
 
   const signIn = async () => {
+    console.log("[useAuth] Initiating sign-in...");
     if (window.puter) {
       try {
         const userData = await window.puter.auth.signIn();
+        console.log("[useAuth] Sign-in successful:", userData.username);
         setUser(userData);
         return userData;
       } catch (err) {
-        console.error('Sign in failed:', err);
+        console.error('[useAuth] Sign-in failed:', err);
+        alert("Sign-in failed. If a popup didn't appear, check if it was blocked by Cross-Origin Isolation (COOP).");
       }
+    } else {
+      alert("Puter.js is not loaded. Cannot sign in.");
     }
   };
 

@@ -1,0 +1,60 @@
+/*! coi-serviceworker v0.1.7 - MIT License - https://github.com/gzuidhof/coi-serviceworker */
+if (typeof window === 'undefined') {
+    self.addEventListener("install", () => self.skipWaiting());
+    self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+    self.addEventListener("fetch", (event) => {
+        if (event.request.cache === "only-if-cached" && event.request.mode !== "same-origin") {
+            return;
+        }
+
+        event.respondWith(
+            fetch(event.request).then((response) => {
+                if (response.status === 0) {
+                    return response;
+                }
+
+                const newHeaders = new Headers(response.headers);
+                // Use credentialless if possible, otherwise require-corp
+                // Use same-origin-allow-popups for COOP to fix auth buttons
+                newHeaders.set("Cross-Origin-Embedder-Policy", "credentialless");
+                newHeaders.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+                newHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
+
+                return new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: newHeaders,
+                });
+            }).catch(e => {
+                // console.error("COI Fetch Error:", e);
+                return fetch(event.request);
+            })
+        );
+    });
+} else {
+    (() => {
+        const script = document.currentScript;
+        const scriptSrc = script ? script.src : '/coi-serviceworker.js';
+
+        if (window.crossOriginIsolated) return;
+
+        if (window.isSecureContext && !!window.navigator.serviceWorker) {
+            window.navigator.serviceWorker.register(scriptSrc).then((registration) => {
+                console.log("[COI] Service Worker registered", registration.scope);
+
+                registration.addEventListener("updatefound", () => {
+                    console.log("[COI] Update found, reloading page...");
+                    window.location.reload();
+                });
+
+                if (registration.active && !window.navigator.serviceWorker.controller) {
+                    console.log("[COI] Worker active but no controller, reloading...");
+                    window.location.reload();
+                }
+            }, (err) => {
+                console.error("[COI] Service Worker registration failed: ", err);
+            });
+        }
+    })();
+}

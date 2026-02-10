@@ -21,7 +21,7 @@ import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
 import { saveMessages, getProjectMessages, saveProject, getProjects, getGitHubToken } from '../services/storage';
 import { generateRandomName } from '../utils/names';
-import { getWebContainer, listFiles, readFile as wcReadFile } from '../services/webContainer';
+import { getWebContainer, listFiles, readFile as wcReadFile, teardown, restartWebContainer, clearVirtualFS } from '../services/webContainer';
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
 
@@ -49,6 +49,14 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   const hasInitialized = useRef(false);
   const webContainerStarted = useRef(false);
+  const currentProjectId = useRef(code);
+
+  useEffect(() => {
+    if (code && code !== 'new' && code !== currentProjectId.current && webContainerStarted.current) {
+      handleRestartWebContainer(true); // pass true to indicate project switch
+      currentProjectId.current = code;
+    }
+  }, [code]);
 
   useEffect(() => {
     setAppSettings(prev => ({ ...prev, customModelId: model }));
@@ -81,10 +89,29 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           addLog('WebContainer ready.');
         } catch (err) {
           addLog(`WebContainer Error: ${err.message}`);
+          if (err.message.includes('Security Error')) {
+            addLog('CRITICAL: Cross-Origin Isolation (COOP/COEP) headers are missing or your browser is blocking them.');
+            addLog('To fix this:');
+            addLog('1. Ensure you are using HTTPS (or localhost).');
+            addLog('2. Check if your browser supports WebContainers (Chrome/Edge/Firefox recommended).');
+            addLog('3. If hosted, ensure the server sends correct COOP/COEP headers.');
+            addLog('Note: We use a Service Worker (coi-serviceworker) to fix this. If you see this, try a hard refresh (Ctrl+F5).');
+          } else if (err.message.includes('already running')) {
+            addLog('Tip: WebContainer is already active. If things are stuck, use the "Restart" button above.');
+          }
         }
       }
     };
     initWC();
+
+    return () => {
+      // Teardown WebContainer on unmount to ensure project isolation
+      // and prevent "already running" errors when re-entering workspace.
+      console.log("[SYSTEM] Workspace unmounting, tearing down WebContainer...");
+      teardown();
+      webContainerStarted.current = false;
+      hasInitialized.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -168,6 +195,37 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   const handleAttachContext = () => {
     addLog("Context attached: Filesystem snapshot taken.");
+  };
+
+  const handleRestartWebContainer = async (isProjectSwitch = false) => {
+    try {
+      addLog('Initiating WebContainer restart sequence...');
+      // Clear logs to provide a fresh start visual
+      setLogs(['Initializing Onyx Environment...', 'User authenticated.', 'Restarting WebContainer...']);
+
+      // If we are switching projects, we should clear the virtual FS
+      if (isProjectSwitch) {
+        clearVirtualFS();
+      }
+
+      await restartWebContainer();
+      addLog('WebContainer restarted successfully. Environment is ready.');
+    } catch (err) {
+      addLog(`WebContainer Restart Error: ${err.message}`);
+      if (err.message.includes('already running')) {
+        addLog('Tip: If restart fails, please try refreshing the entire page. WebContainer can sometimes get stuck if multiple boot attempts happen too quickly.');
+      }
+    }
+  };
+
+  const handleStopWebContainer = async () => {
+    try {
+      addLog('Shutting down WebContainer...');
+      await teardown();
+      addLog('WebContainer stopped. Instance and references cleared.');
+    } catch (err) {
+      addLog(`WebContainer Stop Error: ${err.message}`);
+    }
   };
 
   const handleDeploy = async () => {
@@ -315,6 +373,30 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
           {activeAmenity === 'terminal' && (
             <div className="h-full flex flex-col bg-[#0d0d0d] overflow-hidden">
+               <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-surface/50">
+                  <div className="flex items-center space-x-2">
+                    <TerminalIcon size={14} className="text-gray-500" />
+                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider font-bold">Terminal Output</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleRestartWebContainer}
+                      className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-primary transition-colors flex items-center space-x-1"
+                      title="Restart WebContainer"
+                    >
+                      <History size={14} />
+                      <span className="text-[10px]">Restart</span>
+                    </button>
+                    <button
+                      onClick={handleStopWebContainer}
+                      className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-red-400 transition-colors flex items-center space-x-1"
+                      title="Stop WebContainer"
+                    >
+                      <LogOut size={14} />
+                      <span className="text-[10px]">Stop</span>
+                    </button>
+                  </div>
+               </div>
                <div className="p-4 flex-1 font-mono text-[11px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
                   {logs.map((log, i) => (
                     <div key={i} className="mb-1 leading-relaxed">
@@ -322,9 +404,16 @@ export default function WorkspacePage({ user, signIn, signOut }) {
                       <span className="text-gray-300 whitespace-pre-wrap">{log}</span>
                     </div>
                   ))}
-                  <div className="flex items-center mt-2">
+                  <div className="flex items-center mt-2 group">
                     <span className="text-primary mr-2 font-bold">onyx-app $</span>
-                    <span className="w-2 h-4 bg-primary animate-pulse"></span>
+                    <span className="w-2 h-4 bg-primary animate-pulse mr-4"></span>
+                    <button
+                      onClick={handleRestartWebContainer}
+                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-primary text-[9px] font-mono transition-opacity flex items-center space-x-1"
+                    >
+                      <History size={10} />
+                      <span>refresh terminal</span>
+                    </button>
                   </div>
                </div>
             </div>

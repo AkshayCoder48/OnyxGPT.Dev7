@@ -1,6 +1,12 @@
 import { WebContainer } from '@webcontainer/api';
 
 /**
+ * Global state to track files written to WebContainer,
+ * allowing them to be restored after a restart.
+ */
+let virtualFS = {};
+
+/**
  * Singleton WebContainer instance management.
  * We use window to persist across HMR and multiple module evaluations.
  */
@@ -19,8 +25,14 @@ export async function getWebContainer() {
 
   console.log("ONYX: Initializing WebContainer boot sequence...");
 
-  if (!window.crossOriginIsolated) {
-    console.error("ONYX: Environment is NOT cross-origin isolated. WebContainer will fail.");
+  const diagnostics = {
+    isSecureContext: window.isSecureContext,
+    crossOriginIsolated: window.crossOriginIsolated,
+    sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+  };
+
+  if (!diagnostics.crossOriginIsolated || !diagnostics.isSecureContext) {
+    console.error("ONYX: WebContainer environment check failed:", diagnostics);
   }
 
   window.__WEBCONTAINER_PROMISE__ = (async () => {
@@ -31,19 +43,27 @@ export async function getWebContainer() {
       return instance;
     } catch (err) {
       const isAlreadyBooted = err.message.includes('Unable to create more instances') ||
-                             err.message.includes('Only a single WebContainer instance can be booted');
+                             err.message.includes('Only a single WebContainer instance can be booted') ||
+                             err.message.includes('already running');
 
       if (isAlreadyBooted) {
         console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
-        throw new Error("WebContainer is already running. Please refresh the page to sync state.");
+        // Try to recover by returning the instance if we can find it? No, we can't.
+        // But we can suggest a hard refresh or using the Restart button.
+        throw new Error("WebContainer is already running in another tab or was not properly closed. Please close other tabs and use the 'Restart' button.");
       }
 
-      if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
-        throw new Error("Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. WebContainer requires these to be set on the server.");
+      let errorMsg = `WebContainer Boot Error: ${err.message}`;
+      if (!diagnostics.isSecureContext) {
+        errorMsg = "Security Error: WebContainer requires a Secure Context (HTTPS or localhost).";
+      } else if (!diagnostics.crossOriginIsolated) {
+        errorMsg = "Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. Check your server configuration.";
+      } else if (!diagnostics.sharedArrayBuffer) {
+        errorMsg = "Security Error: SharedArrayBuffer is not supported by your browser or environment.";
       }
 
       window.__WEBCONTAINER_PROMISE__ = null;
-      throw err;
+      throw new Error(errorMsg);
     }
   })();
 
@@ -53,6 +73,17 @@ export async function getWebContainer() {
 export async function writeFile(path, contents) {
   const wc = await getWebContainer();
   await wc.fs.writeFile(path, contents);
+
+  // Track in virtual FS for restoration after restart
+  // Handles nested paths by creating directory structure
+  const parts = path.split('/').filter(Boolean);
+  let current = virtualFS;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    if (!current[part]) current[part] = { directory: {} };
+    current = current[part].directory;
+  }
+  current[parts[parts.length - 1]] = { file: { contents } };
 }
 
 export async function readFile(path) {
@@ -83,4 +114,59 @@ export async function listFiles(path = '/') {
 export async function mount(files) {
   const wc = await getWebContainer();
   await wc.mount(files);
+  // Merge into virtual FS
+  virtualFS = { ...virtualFS, ...files };
+}
+
+/**
+ * Tears down the current WebContainer instance and clears global references.
+ */
+export async function teardown() {
+  console.log("ONYX: Tearing down WebContainer...");
+
+  // Try to get instance from promise if it's not yet captured
+  if (!window.__WEBCONTAINER_INSTANCE__ && window.__WEBCONTAINER_PROMISE__) {
+    try {
+      window.__WEBCONTAINER_INSTANCE__ = await window.__WEBCONTAINER_PROMISE__;
+    } catch (e) {
+      // Ignore if promise failed
+    }
+  }
+
+  if (window.__WEBCONTAINER_INSTANCE__) {
+    try {
+      const wc = window.__WEBCONTAINER_INSTANCE__;
+      if (wc && typeof wc.teardown === 'function') {
+        await wc.teardown();
+      }
+    } catch (err) {
+      console.error("ONYX: Error during WebContainer teardown:", err);
+    }
+  }
+  window.__WEBCONTAINER_INSTANCE__ = null;
+  window.__WEBCONTAINER_PROMISE__ = null;
+  console.log("ONYX: WebContainer reference cleared.");
+}
+
+/**
+ * Restarts the WebContainer by tearing down the current instance and booting a new one.
+ */
+export async function restartWebContainer() {
+  await teardown();
+  const instance = await getWebContainer();
+
+  // Restore files if any were tracked
+  if (Object.keys(virtualFS).length > 0) {
+    console.log("ONYX: Restoring virtual filesystem after restart...");
+    await instance.mount(virtualFS);
+  }
+
+  return instance;
+}
+
+/**
+ * Clears the virtual filesystem cache.
+ */
+export function clearVirtualFS() {
+  virtualFS = {};
 }
