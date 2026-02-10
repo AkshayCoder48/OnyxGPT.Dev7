@@ -15,9 +15,7 @@ if (typeof window === 'undefined') {
                 }
 
                 const newHeaders = new Headers(response.headers);
-                // Use credentialless if possible, otherwise require-corp
-                // Use same-origin-allow-popups for COOP to fix auth buttons
-                newHeaders.set("Cross-Origin-Embedder-Policy", "credentialless");
+                newHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
                 newHeaders.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
                 newHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
 
@@ -27,7 +25,6 @@ if (typeof window === 'undefined') {
                     headers: newHeaders,
                 });
             }).catch(e => {
-                // console.error("COI Fetch Error:", e);
                 return fetch(event.request);
             })
         );
@@ -41,15 +38,11 @@ if (typeof window === 'undefined') {
 
         if (window.isSecureContext && !!window.navigator.serviceWorker) {
             window.navigator.serviceWorker.register(scriptSrc).then((registration) => {
-                console.log("[COI] Service Worker registered", registration.scope);
-
                 registration.addEventListener("updatefound", () => {
-                    console.log("[COI] Update found, reloading page...");
                     window.location.reload();
                 });
 
                 if (registration.active && !window.navigator.serviceWorker.controller) {
-                    console.log("[COI] Worker active but no controller, reloading...");
                     window.location.reload();
                 }
             }, (err) => {

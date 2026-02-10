@@ -3,24 +3,22 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProjectLandingPage from './pages/ProjectLandingPage';
 import WorkspacePage from './pages/WorkspacePage';
 import { useAuth } from './hooks/useAuth';
+import { getWebContainer } from './services/webContainer';
 
 function App() {
-  const { user, loading, signIn, signOut } = useAuth();
+  // Pre-boot WebContainer in the background for faster project opening
+  React.useEffect(() => {
+    getWebContainer().catch(() => {});
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#0A0A0A] text-primary">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const { user, loading, signIn, signOut } = useAuth();
 
   return (
     <Router>
       <Routes>
         <Route path="/" element={<ProjectLandingPage />} />
-        <Route path="/project/:code" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
-        <Route path="/project" element={<WorkspacePage user={user} signIn={signIn} signOut={signOut} />} />
+        <Route path="/project/:code" element={<WorkspacePage user={user} loading={loading} signIn={signIn} signOut={signOut} />} />
+        <Route path="/project" element={<WorkspacePage user={user} loading={loading} signIn={signIn} signOut={signOut} />} />
       </Routes>
     </Router>
   );

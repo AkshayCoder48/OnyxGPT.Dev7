@@ -93,7 +93,7 @@ export default function ProjectLandingPage() {
     await saveProject(newProject);
     // Ensure fresh WebContainer for new project
     clearVirtualFS();
-    navigate(`/project/${id}`);
+    navigate(`/project/${id}`, { state: { initialPrompt: promptInput } });
   };
 
   const handleConnectGitHub = async () => {
@@ -124,13 +124,6 @@ export default function ProjectLandingPage() {
     p?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-primary animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">

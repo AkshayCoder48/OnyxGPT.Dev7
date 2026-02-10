@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { waitForPuter } from '../utils/puter';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -6,24 +7,23 @@ export function useAuth() {
 
   const checkAuth = useCallback(async () => {
     console.log("[useAuth] Checking auth status...");
-    if (window.puter) {
-      try {
-        const isSignedIn = await window.puter.auth.isSignedIn();
-        console.log("[useAuth] Is signed in:", isSignedIn);
-        if (isSignedIn) {
-          const userData = await window.puter.auth.getUser();
-          console.log("[useAuth] User data received:", userData.username);
-          setUser(userData);
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-        console.error('[useAuth] Auth check failed:', err);
+    try {
+      const puter = await waitForPuter(5000);
+      const isSignedIn = await puter.auth.isSignedIn();
+      console.log("[useAuth] Is signed in:", isSignedIn);
+      if (isSignedIn) {
+        const userData = await puter.auth.getUser();
+        console.log("[useAuth] User data received:", userData.username);
+        setUser(userData);
+      } else {
+        setUser(null);
       }
-    } else {
-      console.warn("[useAuth] Puter.js not found during auth check.");
+    } catch (err) {
+      console.error('[useAuth] Auth check failed or Puter.js timeout:', err);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {

@@ -25,7 +25,7 @@ import { getWebContainer, listFiles, readFile as wcReadFile, teardown, restartWe
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
 
-export default function WorkspacePage({ user, signIn, signOut }) {
+export default function WorkspacePage({ user, signIn, signOut, loading: authLoading }) {
   const { code } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,7 +39,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   });
   const [model, setModel] = useState(appSettings.customModelId);
   const [mode, setMode] = useState('execute');
-  const [logs, setLogs] = useState(['Initializing Onyx Environment...', 'User authenticated.']);
+  const [logs, setLogs] = useState(['Initializing Onyx Environment...', 'Booting systems...']);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -79,30 +79,45 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     setGhConnected(!!token);
   };
 
+  const bootWC = async () => {
+    try {
+      addLog('Booting WebContainer...');
+      await getWebContainer();
+      addLog('WebContainer ready.');
+    } catch (err) {
+      addLog(`WebContainer Error: ${err.message}`);
+      if (err.message.includes('Security Error')) {
+        addLog('CRITICAL: Cross-Origin Isolation (COOP/COEP) headers are missing or your browser is blocking them.');
+        addLog('To fix this:');
+        addLog('1. Ensure you are using HTTPS (or localhost).');
+        addLog('2. Check if your browser supports WebContainers (Chrome/Edge/Firefox recommended).');
+        addLog('3. If hosted, ensure the server sends correct COOP/COEP headers.');
+        addLog('Note: We use a Service Worker (coi-serviceworker) to fix this. If you see this, try a hard refresh (Ctrl+F5).');
+      } else if (err.message.includes('already running')) {
+        addLog('Tip: WebContainer is already active. If things are stuck, use the "Restart" button above.');
+      }
+    }
+  };
+
   useEffect(() => {
-    const initWC = async () => {
+    const initEnv = async () => {
       if (!webContainerStarted.current) {
         webContainerStarted.current = true;
-        try {
-          addLog('Booting WebContainer...');
-          await getWebContainer();
-          addLog('WebContainer ready.');
-        } catch (err) {
-          addLog(`WebContainer Error: ${err.message}`);
-          if (err.message.includes('Security Error')) {
-            addLog('CRITICAL: Cross-Origin Isolation (COOP/COEP) headers are missing or your browser is blocking them.');
-            addLog('To fix this:');
-            addLog('1. Ensure you are using HTTPS (or localhost).');
-            addLog('2. Check if your browser supports WebContainers (Chrome/Edge/Firefox recommended).');
-            addLog('3. If hosted, ensure the server sends correct COOP/COEP headers.');
-            addLog('Note: We use a Service Worker (coi-serviceworker) to fix this. If you see this, try a hard refresh (Ctrl+F5).');
-          } else if (err.message.includes('already running')) {
-            addLog('Tip: WebContainer is already active. If things are stuck, use the "Restart" button above.');
-          }
-        }
+
+        // Parallel boot Puter and WebContainer
+        const pPromise = waitForPuter(10000).then(() => {
+          addLog('Puter.js ready.');
+          return true;
+        }).catch(() => {
+          addLog('Puter.js load slow. Proceeding...');
+          return false;
+        });
+
+        const wPromise = bootWC();
+        await Promise.all([pPromise, wPromise]);
       }
     };
-    initWC();
+    initEnv();
 
     return () => {
       // Teardown WebContainer on unmount to ensure project isolation
@@ -128,13 +143,18 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   }, [code]);
 
   useEffect(() => {
-    if (initialPrompt && messages.length === 0 && !isGenerating && !hasInitialized.current) {
-      handleSendMessage(initialPrompt);
-      hasInitialized.current = true;
-    } else if (messages.length === 0 && !hasInitialized.current && code !== 'new') {
-      setMessages([{ role: 'assistant', content: "Hello! I'm Onyx. I've initialized your cloud environment. What would you like to build today?" }]);
+    // We only trigger the initial prompt if messages are empty and we haven't initialized yet
+    if (messages.length === 0 && !isGenerating && !hasInitialized.current) {
+      if (initialPrompt) {
+        handleSendMessage(initialPrompt);
+        hasInitialized.current = true;
+      } else if (code !== 'new') {
+        // Welcome message for existing project with no history (or if prompt was empty)
+        setMessages([{ role: 'assistant', content: "Hello! I'm Onyx. I've initialized your cloud environment. What would you like to build today?" }]);
+        hasInitialized.current = true;
+      }
     }
-  }, [initialPrompt, messages.length, code]);
+  }, [initialPrompt, messages.length, code, isGenerating]);
 
   const addLog = (log) => {
     setLogs(prev => [...prev, typeof log === 'string' ? log : JSON.stringify(log)]);
@@ -273,22 +293,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     localStorage.setItem('onyx_settings', JSON.stringify(appSettings));
   }, [appSettings]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="digital-glow p-12 bg-surface rounded-2xl border border-gray-800 max-w-md w-full">
-           <Box size={64} className="text-primary mx-auto mb-6 animate-pulse" />
-           <h1 className="text-3xl font-display font-bold mb-4 text-white">Project Isolated</h1>
-           <p className="text-gray-400 mb-8 leading-relaxed">
-             This workspace is encrypted and scoped to your Puter identity. Please sign in to resume.
-           </p>
-           <button onClick={signIn} className="w-full bg-primary text-background font-bold px-8 py-4 rounded-xl hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,228,204,0.3)]">
-             Sign In with Puter
-           </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-screen flex flex-col bg-background text-white overflow-hidden font-sans">
@@ -423,17 +427,35 @@ export default function WorkspacePage({ user, signIn, signOut }) {
         </div>
 
         <div className="w-[400px] xl:w-[450px] flex flex-col bg-surface shadow-2xl shrink-0">
-          <ChatPanel
-            messages={messages}
-            onSend={handleSendMessage}
-            model={model}
-            setModel={setModel}
-            mode={mode}
-            setMode={setMode}
-            isGenerating={isGenerating}
-            onUndo={handleUndo}
-            onAttachContext={handleAttachContext}
-          />
+          {user ? (
+            <ChatPanel
+              messages={messages}
+              onSend={handleSendMessage}
+              model={model}
+              setModel={setModel}
+              mode={mode}
+              setMode={setMode}
+              isGenerating={isGenerating}
+              onUndo={handleUndo}
+              onAttachContext={handleAttachContext}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-surface/30">
+              <Box size={48} className="text-primary/50 mb-6" />
+              <h3 className="text-xl font-bold mb-2">Sign in to start building</h3>
+              <p className="text-sm text-gray-400 mb-8">
+                Connect with Puter to access your persistent cloud workspace and AI features.
+              </p>
+              <button
+                onClick={signIn}
+                disabled={authLoading}
+                className="bg-primary text-background font-bold px-8 py-3 rounded-xl hover:brightness-110 transition-all flex items-center space-x-2"
+              >
+                {authLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                <span>{authLoading ? 'Waiting for Puter...' : 'Sign In with Puter'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
