@@ -7,7 +7,13 @@ export function useAuth() {
 
   const checkAuth = useCallback(async () => {
     try {
-      if (window.puterReady) await window.puterReady;
+      // Wait for Puter with a safety race
+      if (window.puterReady) {
+        await Promise.race([
+          window.puterReady,
+          new Promise(resolve => setTimeout(resolve, 6000))
+        ]);
+      }
 
       if (window.puter) {
         setPuterLoaded(true);
@@ -18,6 +24,8 @@ export function useAuth() {
         } else {
           setUser(null);
         }
+      } else {
+        console.error("ONYX: Puter.js failed to initialize in time.");
       }
     } catch (err) {
       console.error('Auth check failed:', err);

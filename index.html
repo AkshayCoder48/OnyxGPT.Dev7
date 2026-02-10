@@ -13,9 +13,17 @@
     <script src="https://js.puter.com/v2/" crossorigin="anonymous"></script>
     <script>
       window.puterReady = new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          console.warn("ONYX: Puter.js load timeout reached.");
+          resolve();
+        }, 5000);
         const check = () => {
-          if (window.puter) resolve();
-          else setTimeout(check, 10);
+          if (window.puter) {
+            clearTimeout(timeout);
+            resolve();
+          } else {
+            setTimeout(check, 50);
+          }
         };
         check();
       });
