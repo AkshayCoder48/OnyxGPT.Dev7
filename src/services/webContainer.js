@@ -13,7 +13,7 @@ export async function getWebContainer() {
   if (window.__WEBCONTAINER_PROMISE__) {
     try {
       return await window.__WEBCONTAINER_PROMISE__;
-    } catch (e) {
+    } catch {
       // If the previous attempt failed, we'll try again below
       window.__WEBCONTAINER_PROMISE__ = null;
     }

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Puter Auth Bridge</title>
+    <script src="https://js.puter.com/v2/"></script>
+</head>
+<body style="background: #0A0A0A; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+    <div style="text-align: center;">
+        <h2 id="status">Connecting to Puter...</h2>
+        <p id="substatus">Please sign in in the popup.</p>
+    </div>
+    <script>
+        const channel = new BroadcastChannel('puter_auth');
+
+        async function handleSignIn() {
+            try {
+                const isSignedIn = await puter.auth.isSignedIn();
+                if (!isSignedIn) {
+                    await puter.auth.signIn();
+                }
+
+                const token = puter.getAuthToken();
+
+                if (token) {
+                    console.log('Token acquired');
+                    channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
+                    document.getElementById('status').innerText = 'Success!';
+                    document.getElementById('substatus').innerText = 'Closing window...';
+                } else {
+                    throw new Error('Failed to acquire token');
+                }
+
+                setTimeout(() => window.close(), 1000);
+            } catch (err) {
+                console.error('Auth Bridge Error:', err);
+                channel.postMessage({ type: 'AUTH_ERROR', error: err.message || 'Unknown error' });
+                document.getElementById('status').innerText = 'Authentication Failed';
+                document.getElementById('substatus').innerText = err.message || 'Please try again.';
+                setTimeout(() => window.close(), 3000);
+            }
+        }
+
+        handleSignIn();
+    </script>
+</body>
+</html>

@@ -24,78 +24,43 @@ export function useAuth() {
   useEffect(() => {
     checkAuth();
 
-    // Check again when the window is focused (e.g. returning from a popup)
-    // This is a fallback for the WebSocket flow
+    // Listen for auth success/error from the Auth Bridge
+    const channel = new BroadcastChannel('puter_auth');
+    channel.onmessage = (event) => {
+      if (event.data.type === 'AUTH_SUCCESS') {
+        console.log('ONYX: Authentication successful via Bridge!');
+        puter.setAuthToken(event.data.token);
+        checkAuth();
+      } else if (event.data.type === 'AUTH_ERROR') {
+        console.error('ONYX: Authentication failed via Bridge:', event.data.error);
+      }
+    };
+
+    // Keep the window focus listener as a fallback
     window.addEventListener('focus', checkAuth);
-    return () => window.removeEventListener('focus', checkAuth);
+    return () => {
+      window.removeEventListener('focus', checkAuth);
+      channel.close();
+    };
   }, [checkAuth]);
 
   const signIn = async () => {
     try {
-      // 1. Generate a unique session token
-      const sessionToken = (typeof crypto.randomUUID === "function") ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
-      // 2. Prepare the popup URL
-      // We pass session_token to the auth page. Puter.com will recognize this
-      // and send the auth token to the WebSocket relay.
-      const authUrl = `https://puter.com/action/sign-in?session_token=${sessionToken}&embedded_in_popup=true&msg_id=1${window.crossOriginIsolated ? '&cross_origin_isolated=true' : ''}`;
-
+      // Open the Auth Bridge file
       const w = 600;
       const h = 700;
       const left = (window.screen.width / 2) - (w / 2);
       const top = (window.screen.height / 2) - (h / 2);
 
-      const popup = window.open(authUrl, 'PuterAuth', `width=${w},height=${h},top=${top},left=${left}`);
+      const bridgeUrl = '/auth-bridge.html';
+      const popup = window.open(bridgeUrl, 'PuterAuthBridge', `width=${w},height=${h},top=${top},left=${left}`);
 
       if (!popup) {
-        console.error('Popup blocked');
-        return;
+        // Fallback to direct sign-in if popup blocked or fails
+        console.warn('Bridge popup blocked, falling back to direct sign-in');
+        await puter.auth.signIn();
+        await checkAuth();
       }
-
-      // 3. Establish WebSocket connection to listen for the auth token
-      // We connect to the Puter API's auth socket relay.
-      const wsUrl = `wss://api.puter.com/v1/auth/socket?session_token=${sessionToken}`;
-      const ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        console.log('ONYX: Auth WebSocket connected, waiting for token...');
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('ONYX: Received message from Auth WebSocket', data);
-
-          if (data.token) {
-            console.log('ONYX: Auth token received via WebSocket!');
-            // 4. Set the auth token and update state
-            puter.setAuthToken(data.token);
-            checkAuth();
-
-            // Clean up
-            ws.close();
-            if (popup && !popup.closed) popup.close();
-          }
-        } catch (err) {
-          console.error('Failed to parse WebSocket message', err);
-        }
-      };
-
-      ws.onerror = (err) => {
-        console.error('Auth WebSocket error:', err);
-      };
-
-      ws.onclose = () => {
-        console.log('Auth WebSocket closed.');
-      };
-
-      // Set a timeout to close the socket and popup if it takes too long
-      setTimeout(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.close();
-        }
-      }, 300000); // 5 minutes timeout
-
     } catch (err) {
       console.error('Sign in failed:', err);
     }

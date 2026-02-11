@@ -198,7 +198,7 @@ function renderAssistantContent(msg) {
               components={{
                 p: ({children}) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
                 pre: ({children}) => <pre className="bg-black/50 p-3 rounded-xl my-3 overflow-x-auto border border-white/5 text-[11px] leading-tight">{children}</pre>,
-                code: ({node, inline, className, children, ...props}) => (
+                code: ({inline, className, children, ...props}) => (
                   <code className={`${className} ${inline ? 'bg-white/10 px-1.5 py-0.5 rounded text-primary' : 'block'}`} {...props}>
                     {children}
                   </code>

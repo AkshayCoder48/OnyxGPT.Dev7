@@ -37,7 +37,7 @@ export default function ProjectLandingPage() {
   const promptRef = React.useRef(null);
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
   const [ghUser, setGhUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
