@@ -5,7 +5,7 @@ import WorkspacePage from './pages/WorkspacePage';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { user, loading, signIn, signOut } = useAuth();
+  const { user, signIn, signOut } = useAuth();
 
   return (
     <Router>

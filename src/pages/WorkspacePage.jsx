@@ -1,3 +1,4 @@
+import puter from "../services/puter";
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -25,7 +26,7 @@ import {
   runCommand,
   readFile as wcReadFile,
   listFiles,
-  writeFile as wcWriteFile
+
 } from '../services/webContainer';
 import * as github from '../services/githubService';
 
