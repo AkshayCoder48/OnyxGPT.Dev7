@@ -25,28 +25,32 @@ export function useAuth() {
     checkAuth();
 
     // Listen for auth success/error from the Auth Bridge
-    const channel = new BroadcastChannel('puter_auth');
-    channel.onmessage = (event) => {
+    const authChannel = new BroadcastChannel('puter_auth');
+    authChannel.onmessage = (event) => {
       if (event.data.type === 'AUTH_SUCCESS') {
         console.log('ONYX: Authentication successful via Bridge!');
+        // Manually set the token in the main app's Puter
         puter.setAuthToken(event.data.token);
-        checkAuth();
+
+        // Reload to update UI state and ensure everything is synced
+        window.location.reload();
       } else if (event.data.type === 'AUTH_ERROR') {
         console.error('ONYX: Authentication failed via Bridge:', event.data.error);
       }
     };
 
-    // Keep the window focus listener as a fallback
+    // Fallback: Check again when the window is focused
     window.addEventListener('focus', checkAuth);
+
     return () => {
       window.removeEventListener('focus', checkAuth);
-      channel.close();
+      authChannel.close();
     };
   }, [checkAuth]);
 
   const signIn = async () => {
     try {
-      // Open the Auth Bridge file
+      // Open the Auth Bridge file hosted on the same domain
       const w = 600;
       const h = 700;
       const left = (window.screen.width / 2) - (w / 2);
@@ -56,7 +60,7 @@ export function useAuth() {
       const popup = window.open(bridgeUrl, 'PuterAuthBridge', `width=${w},height=${h},top=${top},left=${left}`);
 
       if (!popup) {
-        // Fallback to direct sign-in if popup blocked or fails
+        // Fallback to direct sign-in if popup blocked
         console.warn('Bridge popup blocked, falling back to direct sign-in');
         await puter.auth.signIn();
         await checkAuth();
@@ -70,6 +74,7 @@ export function useAuth() {
     try {
       await puter.auth.signOut();
       setUser(null);
+      window.location.reload();
     } catch (err) {
       console.error('Sign out failed:', err);
     }
