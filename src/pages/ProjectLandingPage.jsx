@@ -232,6 +232,7 @@ export default function ProjectLandingPage() {
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-2xl blur-xl opacity-50 group-focus-within:opacity-100 transition duration-500"></div>
             <form onSubmit={handleCreateProject} className="relative bg-[#121212] border border-white/5 rounded-2xl p-4 shadow-2xl focus-within:border-primary/30 transition-all">
               <textarea
+                ref={promptRef}
                 value={promptInput}
                 onChange={(e) => setPromptInput(e.target.value)}
                 rows="4"

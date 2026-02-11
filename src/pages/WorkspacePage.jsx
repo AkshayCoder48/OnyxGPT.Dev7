@@ -422,16 +422,16 @@ export default function WorkspacePage({ user, signIn, signOut }) {
                       <span className="text-gray-300 whitespace-pre-wrap">{log}</span>
                     </div>
                   ))}
-                  <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2 group">
+                  <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2 group relative">
                     <span className="text-primary mr-2 font-bold shrink-0">onyx-app $</span>
                     <input
                       type="text"
                       value={terminalInput}
                       onChange={(e) => setTerminalInput(e.target.value)}
-                      className="flex-1 bg-transparent border-none outline-none text-gray-300 font-mono"
+                      className="flex-1 bg-transparent border-none outline-none text-gray-300 font-mono relative z-10"
                       autoFocus
                     />
-                    <div className="w-2 h-4 bg-primary animate-pulse group-focus-within:hidden"></div>
+                    {!terminalInput && <div className="absolute left-[85px] w-2 h-4 bg-primary animate-pulse group-focus-within:block"></div>}
                   </form>
                   <div ref={terminalEndRef} />
                </div>

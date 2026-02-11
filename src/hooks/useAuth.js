@@ -2,52 +2,49 @@ import { useState, useEffect, useCallback } from 'react';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [puterLoaded, setPuterLoaded] = useState(!!window.puter);
+  const [loading, setLoading] = useState(false);
 
   const checkAuth = useCallback(async () => {
+    if (!window.puter) return;
     try {
-      // Wait for Puter with a safety race
-      if (window.puterReady) {
-        await Promise.race([
-          window.puterReady,
-          new Promise(resolve => setTimeout(resolve, 6000))
-        ]);
-      }
-
-      if (window.puter) {
-        setPuterLoaded(true);
-        const isSignedIn = await window.puter.auth.isSignedIn();
-        if (isSignedIn) {
-          const userData = await window.puter.auth.getUser();
-          setUser(userData);
-        } else {
-          setUser(null);
-        }
+      if (window.puter.auth.isSignedIn()) {
+        const userData = await window.puter.auth.getUser();
+        setUser(userData);
       } else {
-        console.error("ONYX: Puter.js failed to initialize in time.");
+        setUser(null);
       }
     } catch (err) {
       console.error('Auth check failed:', err);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    checkAuth();
+    // Check immediately if puter is already there
+    if (window.puter) {
+        checkAuth();
+    } else {
+        // Fallback for script load delay, but don't set global loading state
+        const interval = setInterval(() => {
+            if (window.puter) {
+                clearInterval(interval);
+                checkAuth();
+            }
+        }, 50);
+        setTimeout(() => clearInterval(interval), 2000);
+    }
   }, [checkAuth]);
 
   const signIn = async () => {
-    if (window.puter) {
-      try {
-        // Redirecting auth as requested
-        return window.puter.auth.signIn();
-      } catch (err) {
-        console.error('Sign in failed:', err);
+    if (!window.puter) return;
+    try {
+      const res = await window.puter.auth.signIn();
+      if (res) {
+          const userData = await window.puter.auth.getUser();
+          setUser(userData);
       }
-    } else {
-        alert("Puter.js is still loading. Please wait a moment.");
+      return res;
+    } catch (err) {
+      console.error('Sign in failed:', err);
     }
   };
 
