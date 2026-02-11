@@ -9,41 +9,42 @@ export async function getWebContainer() {
     return window.__WEBCONTAINER_INSTANCE__;
   }
 
+  // If a boot is already in progress, wait for it
   if (window.__WEBCONTAINER_PROMISE__) {
     try {
       return await window.__WEBCONTAINER_PROMISE__;
     } catch (e) {
+      // If the previous attempt failed, we'll try again below
       window.__WEBCONTAINER_PROMISE__ = null;
     }
   }
 
   console.log("ONYX: Initializing WebContainer boot sequence...");
 
-  if (!window.crossOriginIsolated) {
-    console.error("ONYX: Environment is NOT cross-origin isolated. WebContainer will fail.");
-  }
-
   window.__WEBCONTAINER_PROMISE__ = (async () => {
     try {
+      // Safety check: is the environment isolated?
+      if (!window.crossOriginIsolated) {
+        throw new Error("Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. WebContainer requires these to be set on the server.");
+      }
+
       const instance = await WebContainer.boot();
       window.__WEBCONTAINER_INSTANCE__ = instance;
-
-      // Handle teardown on window unload
-      window.addEventListener('unload', () => {
-        instance.teardown();
-      });
 
       console.log("ONYX: WebContainer booted successfully.");
       return instance;
     } catch (err) {
+      // Handle the case where another instance is already booted (e.g. lost reference during HMR)
       const isAlreadyBooted = err.message.includes('Unable to create more instances') ||
                              err.message.includes('Only a single WebContainer instance can be booted');
 
       if (isAlreadyBooted) {
-        console.warn("ONYX: WebContainer already booted (instance exists but not captured).");
+        console.warn("ONYX: WebContainer already booted elsewhere. Please refresh to recover.");
+        // We can't recover the instance if we lost the reference, but we shouldn't throw a cryptic error.
         throw new Error("WebContainer is already running. Please refresh the page to sync state.");
       }
 
+      // Handle missing headers specifically
       if (err.message.includes('postMessage') && err.message.includes('SharedArrayBuffer')) {
         throw new Error("Security Error: Cross-Origin Isolation headers (COOP/COEP) are missing. WebContainer requires these to be set on the server.");
       }
@@ -102,5 +103,7 @@ export async function teardownWebContainer() {
 
 export async function restartWebContainer() {
   await teardownWebContainer();
+  // Wait a bit for teardown to settle
+  await new Promise(r => setTimeout(r, 500));
   return await getWebContainer();
 }

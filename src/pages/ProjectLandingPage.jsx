@@ -119,7 +119,17 @@ export default function ProjectLandingPage() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden relative">
+      {!window.crossOriginIsolated && (
+        <div className="absolute top-0 left-0 right-0 z-[100] bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center justify-center space-x-3 backdrop-blur-md">
+          <XCircle size={14} className="text-red-500" />
+          <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">
+            Security Error: Cross-Origin Isolation (COOP/COEP) headers are missing. WebContainer will not function correctly.
+          </span>
+          <a href="https://webcontainers.io/guides/configure-headers" target="_blank" rel="noreferrer" className="text-[10px] font-bold text-white underline decoration-red-500/50 hover:text-red-400 transition-colors">Learn how to fix</a>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="w-72 border-r border-white/5 flex flex-col bg-[#0d0d0d] shrink-0">
         {/* Sidebar Header */}
