@@ -2,22 +2,20 @@ import React from 'react';
 import {
   Terminal,
   GitBranch,
-  GitCommit,
-  GitPullRequest,
-  Cpu,
-  Brain,
   Clock,
   Download,
   Filter,
   FileCode,
   Zap,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Brain
 } from 'lucide-react';
 
 export default function ActivityView({ messages = [] }) {
-  // Extract all tool calls and reasoning from messages
   const logs = [];
+  const gitNodes = [];
+  const drafts = new Map();
 
   messages.forEach(msg => {
     if (msg.role === 'assistant') {
@@ -33,9 +31,10 @@ export default function ActivityView({ messages = [] }) {
         });
       }
 
-      // Add tool calls
+      // Add tool calls and handle git topology
       if (msg.toolCalls) {
         msg.toolCalls.forEach(tc => {
+          // General execution logs
           logs.push({
             type: 'tool',
             name: tc.name,
@@ -45,6 +44,33 @@ export default function ActivityView({ messages = [] }) {
             timestamp: tc.timestamp || msg.timestamp,
             completedAt: tc.completedAt
           });
+
+          // Git Topology logic
+          if (tc.name === 'write_git_topology') {
+            drafts.set(tc.id, {
+              branch: tc.input.branch,
+              label: tc.input.label,
+              sublabel: tc.input.sublabel,
+              timestamp: tc.timestamp,
+              id: tc.id
+            });
+          } else if (tc.name === 'publish_git_topology') {
+            const actionId = tc.input.actionId;
+            let nodeToPublish = null;
+            if (actionId === 'latest') {
+              const draftArray = Array.from(drafts.values());
+              nodeToPublish = draftArray[draftArray.length - 1];
+            } else {
+              nodeToPublish = drafts.get(actionId);
+            }
+
+            if (nodeToPublish && tc.status === 'success') {
+               gitNodes.push({
+                 ...nodeToPublish,
+                 publishedAt: tc.completedAt || tc.timestamp
+               });
+            }
+          }
         });
       }
     }
@@ -52,6 +78,9 @@ export default function ActivityView({ messages = [] }) {
 
   // Sort logs by timestamp
   logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  // Sort git nodes by published date (descending for display)
+  gitNodes.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
   return (
     <div className="h-full flex bg-[#0A0A0A] overflow-hidden">
@@ -65,33 +94,32 @@ export default function ActivityView({ messages = [] }) {
           <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Auto-generated Flow</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-8 relative">
-          {/* Vertical line */}
-          <div className="absolute left-[29px] top-8 bottom-8 w-[1px] bg-gradient-to-b from-primary/50 via-purple-500/50 to-transparent"></div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-8 relative custom-scrollbar">
+          {gitNodes.length > 0 && (
+            <div className="absolute left-[29px] top-8 bottom-8 w-[1px] bg-gradient-to-b from-primary/50 via-purple-500/50 to-transparent"></div>
+          )}
 
-          <GitNode
-            active
-            branch="feature/auth"
-            label="Implement Puter.js Auth"
-            time="2m ago"
-            sublabel="AI agent integrated session handling"
-          />
-          <GitNode
-            branch="main"
-            label="Setup Vite Scaffold"
-            time="15m ago"
-            sublabel="Initial project structure created"
-          />
-          <GitNode
-            branch="main"
-            label="Initial Commit"
-            time="1h ago"
-          />
+          {gitNodes.length === 0 ? (
+            <div className="text-[10px] text-gray-600 italic text-center py-10 px-4">
+              No git actions published yet.
+            </div>
+          ) : (
+            gitNodes.map((node, i) => (
+              <GitNode
+                key={node.id}
+                active={i === 0}
+                branch={node.branch}
+                label={node.label}
+                time={formatRelativeTime(node.publishedAt)}
+                sublabel={node.sublabel}
+              />
+            ))
+          )}
         </div>
       </aside>
 
       {/* Main Content: Execution Logs */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden border-l border-white/5">
         <header className="p-6 border-b border-white/5 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-xl font-display font-bold text-white">Execution Logs</h2>
@@ -144,7 +172,7 @@ export default function ActivityView({ messages = [] }) {
 
 function GitNode({ active, branch, label, time, sublabel }) {
   return (
-    <div className="relative pl-10 group cursor-default">
+    <div className="relative pl-10 group cursor-default animate-in slide-in-from-left-2 duration-300">
       <div className={`absolute left-0 top-1 w-6 h-6 rounded-full border-2 flex items-center justify-center bg-[#0A0A0A] z-10 transition-all ${
         active ? 'border-primary shadow-[0_0_10px_rgba(0,228,204,0.4)]' : 'border-gray-800'
       }`}>
@@ -182,7 +210,6 @@ function LogEntry({ log }) {
     );
   }
 
-  const isTool = log.type === 'tool';
   const isError = log.status === 'error';
   const isSuccess = log.status === 'success';
 
@@ -191,12 +218,14 @@ function LogEntry({ log }) {
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${
-            log.name === 'runCommand' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+            log.name === 'runCommand' ? 'bg-purple-500/20 text-purple-400' :
+            log.name.includes('git') ? 'bg-orange-500/20 text-orange-400' :
+            'bg-blue-500/20 text-blue-400'
           }`}>
-            {log.name === 'runCommand' ? 'Shell' : 'Tool Call'}
+            {log.name === 'runCommand' ? 'Shell' : log.name.includes('git') ? 'Git' : 'System'}
           </div>
           <div className="font-mono text-xs text-gray-200">
-            {log.name}({log.input?.path || log.input?.command || ''})
+            {log.name}({log.input?.path || log.input?.command || log.input?.label || ''})
           </div>
         </div>
         <div className="flex items-center space-x-4">
@@ -216,10 +245,11 @@ function LogEntry({ log }) {
            </div>
            <div className="flex-1 overflow-hidden">
               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter mb-1">
-                {log.name === 'writeFile' ? 'Writing Asset' : 'Executing Binary'}
+                {log.name === 'writeFile' ? 'Asset Management' :
+                 log.name.includes('git') ? 'Topology Update' : 'Execution'}
               </div>
               <div className="text-xs font-mono text-gray-300 truncate">
-                {log.input?.path || `${log.input?.command} ${log.input?.args?.join(' ') || ''}`}
+                {log.input?.path || `${log.input?.command || ''} ${log.input?.args?.join(' ') || ''}` || log.input?.label || log.name}
               </div>
               {log.result && (
                 <div className="mt-2 pt-2 border-t border-white/5 text-[11px] text-gray-500 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
@@ -231,4 +261,15 @@ function LogEntry({ log }) {
       </div>
     </div>
   );
+}
+
+function formatRelativeTime(timestamp) {
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(timestamp).toLocaleDateString();
 }

@@ -13,6 +13,7 @@ CRITICAL CONSTRAINTS:
 - Formatting: Use clean, concise Markdown. Avoid unnecessary empty lines or massive gaps between sections.
 - UI/UX: Build apps that look modern, professional, and dark-themed by default unless specified otherwise.
 - REASONING: Before every major action or complex logic, provide your reasoning inside <reason>...</reason> tags. This will be shown to the user as your "thought process".
+- GIT TOPOLOGY: Use 'write_git_topology' to describe a git action and 'publish_git_topology' to confirm it. This visualizes your work progress in the "Activity" tab.
 
 TOOL PROTOCOL:
 - When you perform an action (like writing a file or running a command), it will be rendered as a "Task" in the UI.
@@ -22,11 +23,12 @@ TOOL PROTOCOL:
 
 WORKFLOW:
 1. Provide a <reason> explaining the initial setup.
-2. Initialize package.json with necessary dependencies (react, react-dom, lucide-react, etc.).
-3. Configure Vite and Tailwind.
-4. Create the folder structure and core components, providing <reason> for architectural choices.
-5. Start the development server using 'npm run dev'.
-6. Provide a final summary of the changes using Markdown.
+2. Use 'write_git_topology' for "Initial Commit" or "Project Setup".
+3. Initialize package.json with necessary dependencies.
+4. Configure Vite and Tailwind.
+5. Create the folder structure and core components, providing <reason> and updating git topology for each phase.
+6. Start the development server using 'npm run dev'.
+7. Provide a final summary of the changes using Markdown.
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
@@ -60,6 +62,36 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
             args: { type: "array", items: { type: "string" } }
           },
           required: ["command", "args"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "write_git_topology",
+        description: "Draft a new git commit or branch action for the topology visualization",
+        parameters: {
+          type: "object",
+          properties: {
+            branch: { type: "string", description: "The branch name, e.g., 'main' or 'feature/auth'" },
+            label: { type: "string", description: "A short label for the action, e.g., 'Initial Commit'" },
+            sublabel: { type: "string", description: "Optional detailed description of the work done" }
+          },
+          required: ["branch", "label"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "publish_git_topology",
+        description: "Publish the drafted git topology action to make it visible in the activity tab",
+        parameters: {
+          type: "object",
+          properties: {
+            actionId: { type: "string", description: "A unique ID or just 'latest' to publish the most recent draft" }
+          },
+          required: ["actionId"]
         }
       }
     },
@@ -134,8 +166,6 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         toolCall = part;
         const toolCallId = toolCall.id;
 
-        // Add a marker in content to allow interleaved rendering
-        // Use a more unique marker that's less likely to be produced accidentally
         assistantMessage.content += `\n\n[TOOL_CALL:${toolCallId}]\n\n`;
 
         assistantMessage.toolCalls.push({
@@ -176,6 +206,12 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
           result = `Command finished with exit code ${exitCode}.`;
           if (exitCode !== 0) status = 'error';
         }
+      } else if (toolCall.name === 'write_git_topology') {
+        onLog(`onyx-app $ git draft: ${args.label} on ${args.branch}`);
+        result = `Git topology draft created for ${args.label}.`;
+      } else if (toolCall.name === 'publish_git_topology') {
+        onLog(`onyx-app $ git publish`);
+        result = `Git topology action published.`;
       } else if (toolCall.name === 'kvSet') {
         onLog(`onyx-app $ kv set ${args.key}`);
         await puter.kv.set(args.key, args.value);
