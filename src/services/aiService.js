@@ -12,6 +12,7 @@ CRITICAL CONSTRAINTS:
 - Root Component: src/App.jsx.
 - Formatting: Use clean, concise Markdown. Avoid unnecessary empty lines or massive gaps between sections.
 - UI/UX: Build apps that look modern, professional, and dark-themed by default unless specified otherwise.
+- REASONING: Before every major action or complex logic, provide your reasoning inside <reason>...</reason> tags. This will be shown to the user as your "thought process".
 
 TOOL PROTOCOL:
 - When you perform an action (like writing a file or running a command), it will be rendered as a "Task" in the UI.
@@ -20,11 +21,12 @@ TOOL PROTOCOL:
 - Always check package.json to ensure dependencies are present.
 
 WORKFLOW:
-1. Initialize package.json with necessary dependencies (react, react-dom, lucide-react, etc.).
-2. Configure Vite and Tailwind.
-3. Create the folder structure and core components.
-4. Start the development server using 'npm run dev'.
-5. Provide a brief summary of the changes using Markdown.
+1. Provide a <reason> explaining the initial setup.
+2. Initialize package.json with necessary dependencies (react, react-dom, lucide-react, etc.).
+3. Configure Vite and Tailwind.
+4. Create the folder structure and core components, providing <reason> for architectural choices.
+5. Start the development server using 'npm run dev'.
+6. Provide a final summary of the changes using Markdown.
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
@@ -112,7 +114,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
     ...messages
   ];
 
-  const modelToUse = options.customModelId || options.model;
+  const modelToUse = options.customModelId || options.model || 'gpt-4o';
 
   while (true) {
     const response = await puter.ai.chat(currentMessages, {
@@ -133,13 +135,15 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         const toolCallId = toolCall.id;
 
         // Add a marker in content to allow interleaved rendering
+        // Use a more unique marker that's less likely to be produced accidentally
         assistantMessage.content += `\n\n[TOOL_CALL:${toolCallId}]\n\n`;
 
         assistantMessage.toolCalls.push({
           id: toolCallId,
           name: toolCall.name,
           input: toolCall.input,
-          status: 'running'
+          status: 'running',
+          timestamp: new Date().toISOString()
         });
         onUpdate({ ...assistantMessage });
       }
@@ -195,6 +199,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
     if (tcIndex !== -1) {
       assistantMessage.toolCalls[tcIndex].status = status;
       assistantMessage.toolCalls[tcIndex].result = result;
+      assistantMessage.toolCalls[tcIndex].completedAt = new Date().toISOString();
       onUpdate({ ...assistantMessage });
     }
 
