@@ -1,3 +1,4 @@
+import puter from "./puter";
 import * as wc from './webContainer';
 
 const SYSTEM_PROMPT = `You are Onyx, an autonomous AI software engineer.
@@ -27,7 +28,7 @@ WORKFLOW:
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
-  if (!window.puter) return;
+  if (!puter) return;
 
   const tools = [
     {
@@ -114,7 +115,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
   const modelToUse = options.customModelId || options.model;
 
   while (true) {
-    const response = await window.puter.ai.chat(currentMessages, {
+    const response = await puter.ai.chat(currentMessages, {
       model: modelToUse,
       tools: tools,
       stream: true
@@ -173,15 +174,15 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         }
       } else if (toolCall.name === 'kvSet') {
         onLog(`onyx-app $ kv set ${args.key}`);
-        await window.puter.kv.set(args.key, args.value);
+        await puter.kv.set(args.key, args.value);
         result = "Value saved to Puter KV.";
       } else if (toolCall.name === 'kvGet') {
         onLog(`onyx-app $ kv get ${args.key}`);
-        const val = await window.puter.kv.get(args.key);
+        const val = await puter.kv.get(args.key);
         result = JSON.stringify(val);
       } else if (toolCall.name === 'fsWrite') {
         onLog(`onyx-app $ cloud-fs write ${args.path}`);
-        await window.puter.fs.write(args.path, args.contents);
+        await puter.fs.write(args.path, args.contents);
         result = "File written to Puter Cloud FS.";
       }
     } catch (err) {

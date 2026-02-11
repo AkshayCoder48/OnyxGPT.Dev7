@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
+import puter from '../services/puter';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const checkAuth = useCallback(async () => {
-    if (!window.puter) return;
     try {
-      if (window.puter.auth.isSignedIn()) {
-        const userData = await window.puter.auth.getUser();
+      // In the ESM version, isSignedIn is an async function
+      const signedIn = await puter.auth.isSignedIn();
+      if (signedIn) {
+        const userData = await puter.auth.getUser();
         setUser(userData);
       } else {
         setUser(null);
@@ -19,43 +21,31 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
-    // Check immediately if puter is already there
-    if (window.puter) {
-        checkAuth();
-    } else {
-        // Fallback for script load delay, but don't set global loading state
-        const interval = setInterval(() => {
-            if (window.puter) {
-                clearInterval(interval);
-                checkAuth();
-            }
-        }, 50);
-        setTimeout(() => clearInterval(interval), 2000);
-    }
+    checkAuth();
   }, [checkAuth]);
 
   const signIn = async () => {
-    if (!window.puter) return;
+    setLoading(true);
     try {
-      const res = await window.puter.auth.signIn();
+      const res = await puter.auth.signIn();
       if (res) {
-          const userData = await window.puter.auth.getUser();
+          const userData = await puter.auth.getUser();
           setUser(userData);
       }
       return res;
     } catch (err) {
       console.error('Sign in failed:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
-    if (window.puter) {
-      try {
-        await window.puter.auth.signOut();
-        setUser(null);
-      } catch (err) {
-        console.error('Sign out failed:', err);
-      }
+    try {
+      await puter.auth.signOut();
+      setUser(null);
+    } catch (err) {
+      console.error('Sign out failed:', err);
     }
   };
 
