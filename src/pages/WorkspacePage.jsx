@@ -14,7 +14,10 @@ import {
   Github,
   Box,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Code as CodeIcon,
+  Folder,
+  Layout
 } from 'lucide-react';
 import ChatPanel from '../components/workspace/ChatPanel';
 import CloudView from '../components/workspace/CloudView';
@@ -25,15 +28,14 @@ import {
   getWebContainer as bootWebContainer,
   runCommand,
   readFile as wcReadFile,
-  listFiles,
-
+  listFiles
 } from '../services/webContainer';
 import * as github from '../services/githubService';
 
 export default function WorkspacePage({ user, signIn, signOut }) {
   const { code } = useParams();
   const navigate = useNavigate();
-  const [activeAmenity, setActiveAmenity] = useState('preview');
+  const [activeTab, setActiveTab] = useState('activity'); // Match image default
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -55,7 +57,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const terminalEndRef = useRef(null);
 
   useEffect(() => {
-    // Load project data from KV using 'code'
     const loadProject = async () => {
       try {
         const data = await puter.kv.get(`project_${code}`);
@@ -118,7 +119,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       addLog(`AI Error: ${err.message}`);
     } finally {
       setIsGenerating(false);
-      // Persist to KV
       puter.kv.set(`project_${code}`, {
         ...project,
         messages: messages,
@@ -136,7 +136,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   const handleStopWC = () => {
     addLog("Stopping WebContainer...");
-    // WebContainer doesn't have a direct stop, but we can clear state
     setPreviewUrl('');
   };
 
@@ -167,9 +166,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           if (entry === 'node_modules' || entry === '.git' || entry === 'dist') continue;
           const fullPath = path === '/' ? `/${entry}` : `${path}/${entry}`;
           try {
-             // We need to differentiate between file and directory.
-             // listFiles returns an array of names.
-             // This is a simplification.
              const content = await wcReadFile(fullPath);
              filesToPush.push({ path: fullPath.substring(1), content });
           } catch (e) {
@@ -210,99 +206,71 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   return (
     <div className="h-screen flex flex-col bg-[#0A0A0A] text-white overflow-hidden font-sans">
-      <header className="h-14 border-b border-white/5 bg-[#0A0A0A] flex items-center justify-between px-4 shrink-0 relative z-10">
-        <div className="flex items-center space-x-4 overflow-hidden">
-          <button onClick={() => navigate('/')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all shrink-0">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="flex items-center space-x-2 shrink-0">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-[#0A0A0A] text-xs font-bold">O</div>
-            <h2 className="font-display font-bold text-lg tracking-tighter">Onyx<span className="text-primary">GPT</span></h2>
+      <header className="h-16 border-b border-white/5 bg-[#0A0A0A] flex items-center justify-between px-6 shrink-0 relative z-30">
+        {/* Left: Logo and Project */}
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-[#0A0A0A] shadow-lg shadow-primary/20">
+              <Layout size={20} />
+            </div>
+            <span className="font-display font-bold text-xl tracking-tighter">OnyxGPT</span>
           </div>
-          <div className="h-4 w-[1px] bg-white/5 mx-1 shrink-0"></div>
-          <div className="text-[10px] font-mono text-gray-500 bg-white/5 px-2 py-0.5 rounded border border-white/5 truncate max-w-[200px]">
-            {project?.name || 'New Project'}
+
+          <div className="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+            <Folder size={14} className="text-gray-500" />
+            <span className="text-xs font-mono text-gray-300">{project?.name || 'onyx-app'}</span>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 shrink-0">
-          <div className="flex items-center bg-white/5 border border-white/5 rounded-lg overflow-hidden mr-2">
-            <button
-              onClick={handleRestartWC}
-              title="Restart WebContainer"
-              className="p-2 hover:bg-white/10 text-gray-500 hover:text-primary transition-all border-r border-white/5"
-            >
-              <RefreshCw size={16} />
-            </button>
-            <button
-              onClick={handleStopWC}
-              title="Stop WebContainer"
-              className="p-2 hover:bg-white/10 text-gray-500 hover:text-red-400 transition-all"
-            >
-              <Square size={16} />
-            </button>
+        {/* Center: Tabs (Segmented Control) */}
+        <div className="flex items-center bg-black border border-white/10 p-1 rounded-2xl">
+          <TabButton
+            active={activeTab === 'preview'}
+            onClick={() => setActiveTab('preview')}
+            label="Preview"
+          />
+          <TabButton
+            active={activeTab === 'code'}
+            onClick={() => setActiveTab('code')}
+            label="Code"
+          />
+          <TabButton
+            active={activeTab === 'activity'}
+            onClick={() => setActiveTab('activity')}
+            label="Activity"
+          />
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+             <IconButton icon={<RefreshCw size={16} />} onClick={handleRestartWC} title="Restart" />
+             <IconButton icon={<Square size={16} />} onClick={handleStopWC} title="Stop" />
           </div>
 
-          {ghConnected && (
-            <button
-              onClick={handleDeploy}
-              disabled={isDeploying}
-              className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/5 hover:border-primary/50 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
-            >
-              {isDeploying ? <Loader2 size={14} className="animate-spin text-primary" /> : <Github size={14} className="text-primary" />}
-              <span className="hidden sm:inline">{isDeploying ? 'Deploying...' : 'Deploy to GitHub'}</span>
-            </button>
-          )}
           <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"
+            onClick={handleDeploy}
+            disabled={!ghConnected || isDeploying}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg ${
+              ghConnected
+                ? 'bg-primary text-[#0A0A0A] shadow-primary/20 hover:brightness-110'
+                : 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
+            }`}
           >
-            <Settings size={18} />
+            {isDeploying ? <Loader2 size={16} className="animate-spin" /> : <Github size={16} />}
+            <span>{isDeploying ? 'Pushing...' : 'Push to Main'}</span>
           </button>
-          <button onClick={signOut} className="text-gray-400 hover:text-red-400 transition-colors p-2 hover:bg-red-400/5 rounded-lg">
-            <LogOut size={18} />
-          </button>
+
+          <IconButton icon={<Settings size={18} />} onClick={() => setIsSettingsOpen(true)} />
+          <IconButton icon={<LogOut size={18} />} onClick={signOut} className="text-red-400 hover:bg-red-500/10" />
         </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden">
-        {/* Amenity Sidebar */}
-        <div className="w-16 border-r border-white/5 bg-[#0A0A0A] flex flex-col items-center py-4 space-y-4 shrink-0">
-          <AmenityButton
-            active={activeAmenity === 'preview'}
-            onClick={() => setActiveAmenity('preview')}
-            icon={<Monitor size={20} />}
-            label="Preview"
-          />
-          <AmenityButton
-            active={activeAmenity === 'activity'}
-            onClick={() => setActiveAmenity('activity')}
-            icon={<Activity size={20} />}
-            label="Activity"
-          />
-          <AmenityButton
-            active={activeAmenity === 'terminal'}
-            onClick={() => setActiveAmenity('terminal')}
-            icon={<TerminalIcon size={20} />}
-            label="Terminal"
-          />
-          <AmenityButton
-            active={activeAmenity === 'cloud'}
-            onClick={() => setActiveAmenity('cloud')}
-            icon={<Cloud size={20} />}
-            label="Cloud"
-          />
-        </div>
-
         {/* Content Area */}
-        <div className="flex-1 flex flex-col bg-[#0A0A0A] border-r border-white/5 relative overflow-hidden min-w-0">
-          {activeAmenity === 'preview' && (
+        <div className="flex-1 flex flex-col bg-[#0A0A0A] relative overflow-hidden min-w-0">
+          {activeTab === 'preview' && (
             <div className="h-full flex flex-col">
-              <div className="bg-[#0D0D0D] p-2 border-b border-white/5 flex items-center px-4 shrink-0">
-                <div className="flex-1 max-w-xl bg-black border border-white/5 rounded-md px-3 py-1 text-[10px] text-gray-500 font-mono overflow-hidden truncate">
-                  {previewUrl || 'Waiting for dev server...'}
-                </div>
-              </div>
               {previewUrl ? (
                 <iframe src={previewUrl} className="flex-1 w-full bg-white" title="Live Preview" />
               ) : (
@@ -314,38 +282,20 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             </div>
           )}
 
-          {activeAmenity === 'activity' && <ActivityView messages={messages} />}
+          {activeTab === 'activity' && <ActivityView messages={messages} />}
 
-          {activeAmenity === 'terminal' && (
-            <div className="h-full flex flex-col bg-[#0d0d0d] overflow-hidden">
-               <div className="p-6 flex-1 font-mono text-[11px] overflow-y-auto custom-scrollbar">
-                  {logs.map((log, i) => (
-                    <div key={i} className="mb-1 leading-relaxed animate-in fade-in duration-300">
-                      <span className="text-primary/50 mr-2 opacity-50">➜</span>
-                      <span className="text-gray-300 whitespace-pre-wrap">{log}</span>
-                    </div>
-                  ))}
-                  <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2 group relative">
-                    <span className="text-primary mr-2 font-bold shrink-0">onyx-app $</span>
-                    <input
-                      type="text"
-                      value={terminalInput}
-                      onChange={(e) => setTerminalInput(e.target.value)}
-                      className="flex-1 bg-transparent border-none outline-none text-gray-300 font-mono relative z-10"
-                      autoFocus
-                    />
-                    {!terminalInput && <div className="absolute left-[85px] w-2 h-4 bg-primary animate-pulse group-focus-within:block"></div>}
-                  </form>
-                  <div ref={terminalEndRef} />
+          {activeTab === 'code' && (
+            <div className="h-full flex items-center justify-center text-gray-500">
+               <div className="text-center">
+                  <CodeIcon size={48} className="mx-auto mb-4 opacity-20" />
+                  <p className="text-sm">Source code explorer coming soon...</p>
                </div>
             </div>
           )}
-
-          {activeAmenity === 'cloud' && <CloudView />}
         </div>
 
         {/* Chat Sidebar */}
-        <div className="w-[400px] xl:w-[450px] flex flex-col bg-[#0A0A0A] shrink-0 shadow-2xl z-20">
+        <div className="w-[400px] xl:w-[450px] flex flex-col bg-[#0A0A0A] border-l border-white/5 shrink-0 z-20">
           <ChatPanel
             messages={messages}
             onSend={handleSendMessage}
@@ -357,6 +307,32 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           />
         </div>
       </main>
+
+      {/* Footer Status Bar */}
+      <footer className="h-8 border-t border-white/5 bg-[#0A0A0A] flex items-center justify-between px-4 shrink-0 z-30">
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">AI Agent Online</span>
+          </div>
+          <div className="flex items-center space-x-2 text-gray-600">
+            <Cpu size={12} />
+            <span className="text-[10px] font-mono uppercase">CPU: 12%</span>
+          </div>
+          <div className="flex items-center space-x-2 text-gray-600">
+            <Box size={12} />
+            <span className="text-[10px] font-mono uppercase">DB: Connected</span>
+          </div>
+        </div>
+        <div className="flex items-center space-x-6 text-gray-600">
+           <span className="text-[10px] font-mono">UTF-8</span>
+           <span className="text-[10px] font-mono uppercase">Line 42, Col 18</span>
+           <div className="flex items-center space-x-2 text-primary/70">
+             <RefreshCw size={10} className="animate-spin-slow" />
+             <span className="text-[10px] font-bold uppercase tracking-widest">Synced</span>
+           </div>
+        </div>
+      </footer>
 
       <SettingsModal
         isOpen={isSettingsOpen}
@@ -376,28 +352,51 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           background: #1a1a1a;
           border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #222;
+        .animate-spin-slow {
+          animation: spin 3s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}} />
     </div>
   );
 }
 
-function AmenityButton({ active, onClick, icon, label }) {
+function TabButton({ active, onClick, label }) {
   return (
     <button
       onClick={onClick}
-      className={`p-3 rounded-xl transition-all relative group ${
+      className={`px-6 py-1.5 rounded-xl text-xs font-bold transition-all ${
         active
-          ? 'bg-primary text-[#0A0A0A] shadow-lg shadow-primary/20 scale-105'
-          : 'text-gray-600 hover:text-white hover:bg-white/5'
+          ? 'bg-primary text-[#0A0A0A] shadow-lg shadow-primary/20'
+          : 'text-gray-500 hover:text-gray-300'
       }`}
     >
-      {icon}
-      <div className="absolute left-full ml-2 px-2 py-1 bg-[#1a1a1a] text-white text-[10px] rounded border border-white/5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-        {label}
-      </div>
+      {label}
     </button>
+  );
+}
+
+function IconButton({ icon, onClick, title, className = "" }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`p-2 text-gray-500 hover:text-white hover:bg-white/5 transition-all ${className}`}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function Cpu(props) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" />
+      <path d="M15 2v2" /><path d="M15 20v2" /><path d="M2 15h2" /><path d="M2 9h2" /><path d="M20 15h2" /><path d="M20 9h2" /><path d="M9 2v2" /><path d="M9 20v2" />
+    </svg>
   );
 }

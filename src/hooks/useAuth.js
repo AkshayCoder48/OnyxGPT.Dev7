@@ -33,7 +33,7 @@ export function useAuth() {
   const signIn = async () => {
     try {
       // 1. Generate a unique session token
-      const sessionToken = crypto.randomUUID();
+      const sessionToken = (typeof crypto.randomUUID === "function") ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
       // 2. Prepare the popup URL
       // We pass session_token to the auth page. Puter.com will recognize this
