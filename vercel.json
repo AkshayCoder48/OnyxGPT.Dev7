@@ -12,6 +12,19 @@
           "value": "same-origin"
         }
       ]
+    },
+    {
+      "source": "/auth-bridge.html",
+      "headers": [
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "unsafe-none"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "unsafe-none"
+        }
+      ]
     }
   ]
 }

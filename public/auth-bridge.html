@@ -3,42 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <title>Puter Auth Bridge</title>
-    <script src="https://js.puter.com"></script>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+        body {
+            background: #0A0A0A;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 400px;
+        }
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid #3B82F6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h2 { margin-bottom: 0.5rem; font-weight: 500; }
+        p { color: #888; margin-bottom: 2rem; }
+        button {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: none;
+        }
+        button:hover { background: #2563EB; }
+    </style>
 </head>
-<body style="background: #0A0A0A; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
-    <div style="text-align: center;">
+<body>
+    <div class="container">
+        <div id="loader" class="spinner"></div>
         <h2 id="status">Connecting to Puter...</h2>
-        <p>Please sign in in the popup.</p>
+        <p id="substatus">Please wait while we set up the connection.</p>
+        <button id="manual-btn" onclick="handleSignIn()">Sign in with Puter</button>
     </div>
+
     <script>
         const channel = new BroadcastChannel('puter_auth');
+        let authAttempted = false;
 
         async function handleSignIn() {
+            if (authAttempted && event && event.type !== 'click') return;
+
             try {
+                if (typeof puter === 'undefined') {
+                    throw new Error('Puter SDK not loaded yet. Please wait or refresh.');
+                }
+
+                authAttempted = true;
+                document.getElementById('status').innerText = 'Signing in...';
+                document.getElementById('substatus').innerText = 'Please complete the sign-in in the popup.';
+                document.getElementById('manual-btn').style.display = 'none';
+                document.getElementById('loader').style.display = 'block';
+
                 // Trigger Puter sign-in
                 await puter.auth.signIn();
 
-                // Get the token
-                const token = puter.auth.getAuthToken();
+                // Try to get token using multiple possible methods
+                let token = null;
+                if (typeof puter.getAuthToken === 'function') {
+                    token = puter.getAuthToken();
+                } else if (puter.auth && typeof puter.auth.getAuthToken === 'function') {
+                    token = puter.auth.getAuthToken();
+                } else if (puter.auth && typeof puter.auth.getToken === 'function') {
+                    token = puter.auth.getToken();
+                } else if (puter.authToken) {
+                    token = puter.authToken;
+                }
 
                 if (token) {
                     channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
                     document.getElementById('status').innerText = 'Success!';
+                    document.getElementById('substatus').innerText = 'Closing window...';
+                    document.getElementById('loader').style.display = 'none';
+                    setTimeout(() => window.close(), 1000);
                 } else {
-                    throw new Error('No token received');
+                    throw new Error('Authenticated but no token found.');
                 }
-
-                // Close the bridge window
-                setTimeout(() => window.close(), 1000);
             } catch (err) {
                 console.error('Auth Bridge Error:', err);
                 channel.postMessage({ type: 'AUTH_ERROR', error: err.message || 'Unknown error' });
                 document.getElementById('status').innerText = 'Authentication Failed';
-                setTimeout(() => window.close(), 2000);
+                document.getElementById('substatus').innerText = err.message || 'Please try again.';
+                document.getElementById('manual-btn').style.display = 'inline-block';
+                document.getElementById('loader').style.display = 'none';
+                authAttempted = false; // Allow retry
             }
         }
 
-        handleSignIn();
+        // Wait for Puter to be ready
+        function checkPuter() {
+            if (typeof puter !== 'undefined') {
+                handleSignIn();
+            } else {
+                setTimeout(checkPuter, 100);
+            }
+        }
+
+        // Try to start automatically when window is ready
+        window.onload = checkPuter;
+
+        // Fallback timeout
+        setTimeout(() => {
+            if (!authAttempted && typeof puter === 'undefined') {
+                document.getElementById('status').innerText = 'Connection Timeout';
+                document.getElementById('substatus').innerText = 'Could not load Puter SDK. Please check your connection.';
+                document.getElementById('manual-btn').style.display = 'inline-block';
+                document.getElementById('loader').style.display = 'none';
+            }
+        }, 5000);
     </script>
 </body>
 </html>

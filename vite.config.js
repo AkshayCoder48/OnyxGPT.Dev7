@@ -1,24 +1,29 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'configure-response-headers',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          // Disable COOP/COEP for the auth bridge to allow popup communication
+          if (req.url && req.url.includes('auth-bridge.html')) {
+            next();
+            return;
+          }
+          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+          next();
+        });
+      },
+    },
+  ],
   server: {
-    headers: {
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Resource-Policy': 'cross-origin',
-    },
-  },
-  preview: {
-    headers: {
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Resource-Policy': 'cross-origin',
-    },
-  },
-  optimizeDeps: {
-    exclude: ['@webcontainer/api'],
+    port: 5173,
+    host: true,
   },
 })
