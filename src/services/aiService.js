@@ -5,25 +5,20 @@ You build high-quality React + Vite applications with modern UI/UX.
 You act as an operator: you write files, install dependencies, and run servers in a browser-native WebContainer.
 
 CRITICAL CONSTRAINTS:
-- Framework: React + Vite ONLY. Do not use Next.js, Vue, or other frameworks.
-- Styling: Tailwind CSS ONLY. Ensure tailwind.config.js and postcss.config.js are correctly configured.
+- Framework: React + Vite ONLY.
+- Styling: Tailwind CSS ONLY.
 - Entry Point: src/main.jsx.
 - Root Component: src/App.jsx.
-- Formatting: Use clean, concise Markdown. Avoid unnecessary empty lines or massive gaps between sections.
-- UI/UX: Build apps that look modern, professional, and dark-themed by default unless specified otherwise.
+- UI/UX: Build apps that look modern, professional, and dark-themed (Onyx theme).
 
 TOOL PROTOCOL:
-- When you perform an action (like writing a file or running a command), it will be rendered as a "Task" in the UI.
+- Use isTerminalBooted to check if the environment is ready before running commands.
 - Use writeFile for all code generation.
 - Use runCommand for npm installs and starting the dev server.
 - Always check package.json to ensure dependencies are present.
 
-WORKFLOW:
-1. Initialize package.json with necessary dependencies (react, react-dom, lucide-react, etc.).
-2. Configure Vite and Tailwind.
-3. Create the folder structure and core components.
-4. Start the development server using 'npm run dev'.
-5. Provide a brief summary of the changes using Markdown.
+TERMINAL STATUS:
+You can now know if the terminal is booted. If isTerminalBooted returns false, you must wait or ask the user to restart the container.
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
@@ -63,44 +58,11 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
     {
       type: "function",
       function: {
-        name: "kvSet",
-        description: "Set a key-value pair in Puter.js KV Store",
+        name: "isTerminalBooted",
+        description: "Check if the WebContainer terminal environment is booted and ready",
         parameters: {
           type: "object",
-          properties: {
-            key: { type: "string" },
-            value: { type: "string" }
-          },
-          required: ["key", "value"]
-        }
-      }
-    },
-    {
-      type: "function",
-      function: {
-        name: "kvGet",
-        description: "Get a value from Puter.js KV Store",
-        parameters: {
-          type: "object",
-          properties: {
-            key: { type: "string" }
-          },
-          required: ["key"]
-        }
-      }
-    },
-    {
-      type: "function",
-      function: {
-        name: "fsWrite",
-        description: "Write a file to Puter.js Cloud Filesystem (persistent)",
-        parameters: {
-          type: "object",
-          properties: {
-            path: { type: "string" },
-            contents: { type: "string" }
-          },
-          required: ["path", "contents"]
+          properties: {}
         }
       }
     }
@@ -130,10 +92,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       } else if (part.type === 'tool_use') {
         toolCall = part;
         const toolCallId = toolCall.id;
-
-        // Add a marker in content to allow interleaved rendering
         assistantMessage.content += `\n\n[TOOL_CALL:${toolCallId}]\n\n`;
-
         assistantMessage.toolCalls.push({
           id: toolCallId,
           name: toolCall.name,
@@ -166,31 +125,17 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
             const match = data.match(/http:\/\/localhost:\d+/);
             if (match) options.onUrlReady(match[0]);
           });
-          result = "Development server started.";
+          result = "Development server started. Check activity feed for logs.";
         } else {
           onLog(`[SYSTEM] Running command...`);
-          try {
-            const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
-            result = `Command finished with exit code ${exitCode}.`;
-            if (exitCode !== 0) status = 'error';
-            onLog(`[SYSTEM] ${result}`);
-          } catch (cmdErr) {
-             onLog(`[SYSTEM] Command failed to start: ${cmdErr.message}`);
-             throw cmdErr;
-          }
+          const exitCode = await wc.runCommand(args.command, args.args, (data) => onLog(data));
+          result = `Command finished with exit code ${exitCode}.`;
+          if (exitCode !== 0) status = 'error';
         }
-      } else if (toolCall.name === 'kvSet') {
-        onLog(`onyx-app $ kv set ${args.key}`);
-        await window.puter.kv.set(args.key, args.value);
-        result = "Value saved to Puter KV.";
-      } else if (toolCall.name === 'kvGet') {
-        onLog(`onyx-app $ kv get ${args.key}`);
-        const val = await window.puter.kv.get(args.key);
-        result = JSON.stringify(val);
-      } else if (toolCall.name === 'fsWrite') {
-        onLog(`onyx-app $ cloud-fs write ${args.path}`);
-        await window.puter.fs.write(args.path, args.contents);
-        result = "File written to Puter Cloud FS.";
+      } else if (toolCall.name === 'isTerminalBooted') {
+        const booted = wc.isWebContainerBooted();
+        result = booted ? "Terminal is booted and ready." : "Terminal is NOT booted. Please wait or restart.";
+        onLog(`[SYSTEM] Terminal status check: ${booted ? 'READY' : 'NOT_READY'}`);
       }
     } catch (err) {
       status = 'error';

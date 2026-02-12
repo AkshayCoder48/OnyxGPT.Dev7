@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import ChatPanel from '../components/workspace/ChatPanel';
-import SettingsModal from '../components/workspace/SettingsModal';
+import Sidebar from '../components/layout/Sidebar';
 import {
-  LogOut,
-  Settings,
   Terminal as TerminalIcon,
   Monitor,
-  Cloud,
-  ChevronLeft,
-  Layout,
   History,
-  FileCode,
-  Box,
-  Github,
-  Globe,
-  Loader2
+  LogOut,
+  Loader2,
+  AlertTriangle,
+  Info,
+  Folder,
+  ArrowRight
 } from 'lucide-react';
 import { chatWithAI } from '../services/aiService';
 import { PROMPTS } from '../utils/prompts';
@@ -25,13 +21,36 @@ import { getWebContainer, listFiles, readFile as wcReadFile, teardown, restartWe
 import CloudView from '../components/workspace/CloudView';
 import * as github from '../services/githubService';
 
+class ActivityErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-full flex items-center justify-center p-8 text-center bg-background">
+          <div className="space-y-4 max-w-md">
+            <AlertTriangle size={48} className="text-red-500 mx-auto" />
+            <h3 className="text-xl font-bold text-white">Activity Feed Crashed</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">The activity log encountered an unexpected error. This is often caused by malformed log data.</p>
+            <button onClick={() => this.setState({ hasError: false })} className="px-6 py-2 bg-primary text-background font-bold rounded-lg hover:brightness-110 transition-all">Retry</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function WorkspacePage({ user, signIn, signOut }) {
   const { code } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const initialPrompt = location.state?.initialPrompt || '';
 
-  const [activeAmenity, setActiveAmenity] = useState('preview');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [messages, setMessages] = useState([]);
   const [appSettings, setAppSettings] = useState(() => {
     const saved = localStorage.getItem('onyx_settings');
@@ -41,9 +60,9 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const [mode, setMode] = useState('execute');
   const [logs, setLogs] = useState(['Initializing Onyx Environment...', 'User authenticated.']);
   const [previewUrl, setPreviewUrl] = useState('');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [project, setProject] = useState(null);
+  const [allProjects, setAllProjects] = useState([]);
   const [isDeploying, setIsDeploying] = useState(false);
   const [ghConnected, setGhConnected] = useState(false);
 
@@ -64,8 +83,9 @@ export default function WorkspacePage({ user, signIn, signOut }) {
 
   useEffect(() => {
     const loadProject = async () => {
+      const projects = await getProjects();
+      setAllProjects(projects);
       if (code && code !== 'new') {
-        const projects = await getProjects();
         const p = projects.find(proj => proj.id === code);
         if (p) setProject(p);
       }
@@ -89,18 +109,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           addLog('WebContainer ready.');
         } catch (err) {
           addLog(`WebContainer Error: ${err.message}`);
-          if (err.message.includes('Security Error')) {
-            addLog('CRITICAL: Cross-Origin Isolation (COOP/COEP) headers are missing or your browser is blocking them.');
-            addLog('To fix this:');
-            addLog('1. Ensure you are using HTTPS (or localhost).');
-            addLog('2. Check if your browser supports WebContainers (Chrome/Edge/Firefox recommended).');
-            addLog('3. If hosted, ensure the server sends:');
-            addLog('   Cross-Origin-Embedder-Policy: require-corp');
-            addLog('   Cross-Origin-Opener-Policy: same-origin');
-            addLog('Note: We have installed a Service Worker (coi-serviceworker) to help with this. If you see this error, please try a hard refresh (Ctrl+F5).');
-          } else if (err.message.includes('already running')) {
-            addLog('Tip: Only one WebContainer can run per origin. Close other tabs or use the "Restart" button above.');
-          }
         }
       }
     };
@@ -159,7 +167,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           model: model,
           onUrlReady: (url) => {
             setPreviewUrl(url);
-            setActiveAmenity('preview');
           },
           systemPrompt: PROMPTS[mode] || PROMPTS.execute
         },
@@ -185,23 +192,14 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       saveMessages(code, newMsgs);
     }
   };
-
-  const handleAttachContext = () => {
-    addLog("Context attached: Filesystem snapshot taken.");
-  };
-
   const handleRestartWebContainer = async () => {
     try {
       addLog('Initiating WebContainer restart sequence...');
-      // Clear logs to provide a fresh start visual
       setLogs(['Initializing Onyx Environment...', 'User authenticated.', 'Restarting WebContainer...']);
       await restartWebContainer();
-      addLog('WebContainer restarted successfully. Environment is fresh.');
+      addLog('WebContainer restarted successfully.');
     } catch (err) {
       addLog(`WebContainer Restart Error: ${err.message}`);
-      if (err.message.includes('already running')) {
-        addLog('Tip: If restart fails, please try refreshing the entire page. WebContainer can sometimes get stuck if multiple boot attempts happen too quickly.');
-      }
     }
   };
 
@@ -209,7 +207,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     try {
       addLog('Shutting down WebContainer...');
       await teardown();
-      addLog('WebContainer stopped. Instance and references cleared.');
+      addLog('WebContainer stopped.');
     } catch (err) {
       addLog(`WebContainer Stop Error: ${err.message}`);
     }
@@ -223,12 +221,9 @@ export default function WorkspacePage({ user, signIn, signOut }) {
       const ghUser = await github.getUser();
       const rawName = project?.name || 'onyx-project';
       const repoName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(7);
-      addLog(`Creating repository: ${repoName}...`);
       const repo = await github.createRepository(repoName, 'Created via OnyxGPT.dev');
 
-      addLog("Preparing files for upload...");
       const filesToPush = [];
-
       const traverse = async (path) => {
         const entries = await listFiles(path);
         for (const entry of entries) {
@@ -237,15 +232,11 @@ export default function WorkspacePage({ user, signIn, signOut }) {
           try {
             const content = await wcReadFile(fullPath);
             filesToPush.push({ path: fullPath.substring(1), content });
-          } catch (e) {
-            await traverse(fullPath);
-          }
+          } catch { await traverse(fullPath); }
         }
       };
 
       await traverse('/');
-
-      addLog(`Pushing ${filesToPush.length} files to main branch...`);
       await github.pushFiles(ghUser.login, repo.name, 'main', filesToPush);
       addLog("Deployment successful!");
       window.open(repo.html_url, '_blank');
@@ -256,21 +247,214 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     }
   };
 
-  useEffect(() => {
-    localStorage.setItem('onyx_settings', JSON.stringify(appSettings));
-  }, [appSettings]);
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <div className="flex-1 flex flex-col bg-background relative overflow-hidden min-w-0">
+            <div className="flex-1 flex flex-col">
+              <div className="bg-surface p-2 border-b border-onyx-border flex items-center px-4 shrink-0 justify-between">
+                <div className="flex-1 max-w-xl bg-background border border-onyx-border rounded-md px-3 py-1.5 text-[11px] text-gray-500 font-mono overflow-hidden truncate">
+                  {previewUrl || 'Waiting for development server to start...'}
+                </div>
+                <div className="flex items-center space-x-2 ml-4">
+                   <div className="flex items-center space-x-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">HMR Active</span>
+                  </div>
+                </div>
+              </div>
+              {previewUrl ? (
+                <iframe src={previewUrl} className="flex-1 w-full bg-white shadow-2xl" title="Live Preview" />
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-500 flex-col space-y-4">
+                  <div className="animate-pulse bg-surface h-32 w-48 rounded-2xl border border-onyx-border relative overflow-hidden">
+                     <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent"></div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-white mb-1 tracking-tight">Booting Engine</p>
+                    <p className="text-xs text-gray-600">Spinning up virtual runtime...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case 'projects':
+        return (
+          <div className="flex-1 flex flex-col bg-background p-12 max-w-4xl mx-auto w-full overflow-y-auto custom-scrollbar">
+            <header className="mb-12">
+              <h2 className="text-4xl font-display font-bold text-white mb-2 tracking-tight">Project Hub</h2>
+              <p className="text-gray-500 text-lg">Switch environments or start something new.</p>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {allProjects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => navigate(`/project/${p.id}`)}
+                  className="p-6 rounded-3xl bg-surface border border-onyx-border hover:border-primary/50 transition-all text-left group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                    <ArrowRight size={24} className="text-primary" />
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-background flex items-center justify-center text-primary mb-6 border border-onyx-border">
+                    <Folder size={24} />
+                  </div>
+                  <h4 className="text-lg font-bold text-white mb-1">{p.name}</h4>
+                  <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-4">Last modified: {new Date(p.updatedAt).toLocaleDateString()}</p>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-1 rounded bg-background border border-onyx-border text-[9px] font-bold text-gray-600">ID: {p.id}</span>
+                    {p.id === code && <span className="px-2 py-1 rounded bg-primary/20 border border-primary/20 text-[9px] font-bold text-primary tracking-widest uppercase">Active Now</span>}
+                  </div>
+                </button>
+              ))}
+              <button
+                onClick={() => navigate('/')}
+                className="p-6 rounded-3xl bg-background border border-onyx-border border-dashed hover:border-primary\/50 transition-all text-center flex flex-col items-center justify-center group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white\/5 flex items-center justify-center text-gray-500 mb-4 group-hover:text-primary transition-colors">
+                  <ArrowRight size={24} className="-rotate-45" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-400 group-hover:text-white transition-colors">Create New Project</h4>
+              </button>
+            </div>
+          </div>
+        );
+      case 'activity':
+        return (
+          <ActivityErrorBoundary>
+            <div className="flex-1 flex flex-col bg-background overflow-hidden">
+               <div className="flex items-center justify-between px-8 py-6 border-b border-onyx-border bg-surface/30">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20">
+                      <Activity size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-bold text-xl text-white tracking-tight">System Activity</h3>
+                      <p className="text-xs text-gray-500">Real-time event stream from WebContainer.</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setLogs([])} className="px-4 py-2 rounded-xl bg-background border border-onyx-border text-[10px] uppercase tracking-widest font-bold text-gray-500 hover:text-white transition-all">Clear Feed</button>
+               </div>
+               <div className="p-8 flex-1 font-mono text-[11px] overflow-y-auto custom-scrollbar space-y-3">
+                  {logs.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-700 space-y-4">
+                      <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center animate-pulse">
+                        <Info size={32} />
+                      </div>
+                      <p className="text-sm italic">Feed is empty.</p>
+                    </div>
+                  ) : (
+                    logs.map((log, i) => (
+                      <div key={i} className="flex items-start space-x-4 group hover:bg-white/5 p-3 rounded-2xl transition-all border border-transparent hover:border-onyx-border">
+                        <div className="w-2 h-2 rounded-full bg-primary/40 mt-1.5 shrink-0 group-hover:animate-ping"></div>
+                        <div className="flex-1 space-y-1">
+                          <span className="text-gray-300 whitespace-pre-wrap leading-relaxed block">{log}</span>
+                          <div className="text-[9px] text-gray-600 font-bold opacity-40 group-hover:opacity-100 transition-opacity">0ms ago • system.event_log</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+               </div>
+            </div>
+          </ActivityErrorBoundary>
+        );
+      case 'playwright':
+        return (
+          <div className="flex-1 flex flex-col bg-background items-center justify-center p-12 text-center">
+             <div className="absolute top-[-20%] left-[-20%] w-[800px] h-[800px] bg-secondary/5 blur-[150px] rounded-full pointer-events-none"></div>
+            <div className="w-24 h-24 bg-secondary/10 rounded-[2.5rem] flex items-center justify-center text-secondary mb-8 border border-secondary/20 shadow-2xl shadow-secondary/20 relative z-10">
+              <TestTube2 size={48} />
+            </div>
+            <h3 className="text-4xl font-display font-bold text-white mb-4 tracking-tight relative z-10">Playwright Test Runner</h3>
+            <p className="text-gray-400 max-w-md text-lg leading-relaxed mb-12 relative z-10">
+              Execute cross-browser tests against your Onyx deployments. High-fidelity E2E testing integrated directly into your IDE.
+            </p>
+            <div className="inline-flex items-center space-x-3 bg-secondary/10 px-6 py-3 rounded-full border border-secondary/20 text-xs font-bold text-secondary uppercase tracking-widest animate-pulse relative z-10">
+              <span className="w-2 h-2 rounded-full bg-secondary"></span>
+              <span>Available in Onyx Enterprise</span>
+            </div>
+          </div>
+        );
+      case 'settings':
+        return (
+          <div className="flex-1 flex flex-col bg-background p-12 max-w-4xl mx-auto w-full overflow-y-auto custom-scrollbar">
+            <header className="mb-12">
+              <h2 className="text-4xl font-display font-bold text-white mb-2 tracking-tight">Settings</h2>
+              <p className="text-gray-500 text-lg">Manage your cloud environment and preferences.</p>
+            </header>
+
+            <div className="space-y-8">
+              <section className="bg-surface p-8 rounded-[2rem] border border-onyx-border space-y-6">
+                 <div>
+                    <div className="flex items-center space-x-3 mb-2">
+                       <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary"><Monitor size={16} /></div>
+                       <h4 className="text-lg font-bold text-white">Inference Engine</h4>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-6">Select the LLM model used for code generation and task execution.</p>
+                    <div className="flex items-center bg-background border border-onyx-border rounded-2xl px-5 py-4 group focus-within:border-primary transition-all">
+                      <input
+                        type="text"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                        placeholder="e.g. gpt-4o"
+                        className="bg-transparent text-base text-gray-200 outline-none w-full font-mono"
+                      />
+                    </div>
+                 </div>
+              </section>
+
+              <section className="bg-surface p-8 rounded-[2rem] border border-onyx-border space-y-6">
+                 <div>
+                    <div className="flex items-center space-x-3 mb-2">
+                       <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center text-red-400"><TerminalIcon size={16} /></div>
+                       <h4 className="text-lg font-bold text-white">Danger Zone</h4>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-6">Irreversible actions that affect your virtual project instance.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <button
+                        onClick={handleRestartWebContainer}
+                        className="flex items-center justify-between p-6 rounded-[1.5rem] border border-onyx-border hover:bg-white/5 transition-all text-left group"
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-white group-hover:text-primary transition-colors">Full Reboot</p>
+                          <p className="text-xs text-gray-600">Restarts the WebContainer</p>
+                        </div>
+                        <History size={20} className="text-gray-700 group-hover:text-primary transition-colors" />
+                      </button>
+                      <button
+                        onClick={handleStopWebContainer}
+                        className="flex items-center justify-between p-6 rounded-[1.5rem] border border-onyx-border hover:bg-red-400/5 transition-all text-left group"
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">Teardown Instance</p>
+                          <p className="text-xs text-gray-600">Stop all background tasks</p>
+                        </div>
+                        <LogOut size={20} className="text-gray-700 group-hover:text-red-400 transition-colors" />
+                      </button>
+                    </div>
+                 </div>
+              </section>
+            </div>
+          </div>
+        );
+      default:
+        return <div>Not Found</div>;
+    }
+  };
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="digital-glow p-12 bg-surface rounded-2xl border border-gray-800 max-w-md w-full">
-           <Box size={64} className="text-primary mx-auto mb-6 animate-pulse" />
-           <h1 className="text-3xl font-display font-bold mb-4 text-white">Project Isolated</h1>
-           <p className="text-gray-400 mb-8 leading-relaxed">
-             This workspace is encrypted and scoped to your Puter identity. Please sign in to resume.
+     return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/5 to-transparent pointer-events-none"></div>
+        <div className="digital-glow p-12 bg-surface rounded-[2.5rem] border border-white/5 max-w-md w-full relative z-10">
+           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-background text-3xl font-bold mx-auto mb-8 shadow-2xl shadow-primary/20 animate-pulse">O</div>
+           <h1 className="text-4xl font-display font-bold mb-4 text-white tracking-tight leading-tight">Project Isolated</h1>
+           <p className="text-gray-500 mb-8 leading-relaxed text-sm">
+             This workspace is encrypted and scoped to your Puter identity. Please sign in to resume building.
            </p>
-           <button onClick={signIn} className="w-full bg-primary text-background font-bold px-8 py-4 rounded-xl hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,228,204,0.3)]">
-             Sign In with Puter
+           <button onClick={signIn} className="w-full bg-primary text-background font-bold px-8 py-5 rounded-2xl hover:brightness-110 transition-all shadow-[0_15px_35px_rgba(0,228,204,0.3)] text-lg">
+             Resume Session
            </button>
         </div>
       </div>
@@ -278,138 +462,60 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background text-white overflow-hidden font-sans">
-      <header className="h-14 border-b border-gray-800 bg-surface flex items-center justify-between px-4 shrink-0 relative z-10">
-        <div className="flex items-center space-x-4 overflow-hidden">
-          <button onClick={() => navigate('/')} className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all shrink-0">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="flex items-center space-x-2 shrink-0">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-background text-xs font-bold">O</div>
-            <h2 className="font-display font-bold text-lg tracking-tighter">Onyx<span className="text-primary">GPT</span></h2>
-          </div>
-          <div className="h-4 w-[1px] bg-gray-800 mx-1 shrink-0"></div>
-          <div className="text-[10px] font-mono text-gray-500 bg-background px-2 py-0.5 rounded border border-gray-800 truncate max-w-[200px]">
-            {project?.name || 'New Project'}
-          </div>
-        </div>
+    <div className="h-screen flex bg-background text-white overflow-hidden font-sans">
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        projectName={project?.name}
+        onBack={() => navigate('/')}
+        onSignOut={signOut}
+        user={user}
+        ghConnected={ghConnected}
+        onDeploy={handleDeploy}
+      />
 
-        <div className="flex items-center space-x-3 shrink-0">
-          {ghConnected && (
-            <button
-              onClick={handleDeploy}
-              disabled={isDeploying}
-              className="flex items-center space-x-2 px-3 py-1.5 bg-background border border-gray-800 hover:border-primary/50 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
-            >
-              {isDeploying ? <Loader2 size={14} className="animate-spin text-primary" /> : <Github size={14} className="text-primary" />}
-              <span className="hidden sm:inline">{isDeploying ? 'Deploying...' : 'Deploy to GitHub'}</span>
-            </button>
-          )}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"
-          >
-            <Settings size={18} />
-          </button>
-          <button onClick={signOut} className="text-gray-400 hover:text-red-400 transition-colors p-2 hover:bg-red-400/5 rounded-lg">
-            <LogOut size={18} />
-          </button>
-        </div>
-      </header>
+      <main className="flex-1 flex overflow-hidden bg-background">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {renderContent()}
 
-      <main className="flex-1 flex overflow-hidden">
-        <div className="w-14 border-r border-gray-800 bg-surface flex flex-col items-center py-4 space-y-4 shrink-0">
-          <AmenityButton
-            active={activeAmenity === 'preview'}
-            onClick={() => setActiveAmenity('preview')}
-            icon={<Monitor size={20} />}
-            label="Preview"
-          />
-          <AmenityButton
-            active={activeAmenity === 'terminal'}
-            onClick={() => setActiveAmenity('terminal')}
-            icon={<TerminalIcon size={20} />}
-            label="Terminal"
-          />
-          <AmenityButton
-            active={activeAmenity === 'cloud'}
-            onClick={() => setActiveAmenity('cloud')}
-            icon={<Cloud size={20} />}
-            label="Cloud"
-          />
-        </div>
-
-        <div className="flex-1 flex flex-col bg-[#0a0a0a] border-r border-gray-800 relative overflow-hidden min-w-0">
-          {activeAmenity === 'preview' && (
-            <div className="h-full flex flex-col">
-              <div className="bg-surface p-2 border-b border-gray-800 flex items-center px-4 shrink-0">
-                <div className="flex-1 max-w-xl bg-background border border-gray-700 rounded-md px-3 py-1 text-[10px] text-gray-400 font-mono overflow-hidden truncate">
-                  {previewUrl || 'Waiting for dev server...'}
+          {/* Terminal Drawer (Enhanced) */}
+          <div className="h-48 border-t border-onyx-border bg-surface/50 flex flex-col overflow-hidden shrink-0">
+             <div className="flex items-center justify-between px-4 py-2 border-b border-onyx-border bg-black/20">
+                <div className="flex items-center space-x-2">
+                  <TerminalIcon size={14} className="text-primary" />
+                  <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest font-bold">Onyx Terminal Runtime</span>
                 </div>
-              </div>
-              {previewUrl ? (
-                <iframe src={previewUrl} className="flex-1 w-full bg-white" title="Live Preview" />
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-gray-500 flex-col space-y-4">
-                  <div className="animate-pulse bg-gray-800 h-32 w-48 rounded-lg border border-gray-700"></div>
-                  <p className="text-sm">Starting WebContainer...</p>
+                <div className="flex items-center space-x-3">
+                  <span className="text-[9px] text-gray-700 font-mono tracking-tight flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>ENGINE READY</span>
+                  </span>
+                  <div className="h-3 w-[1px] bg-onyx-border"></div>
+                  <button onClick={handleRestartWebContainer} className="text-gray-500 hover:text-white transition-colors" title="Refresh Terminal"><History size={12} /></button>
                 </div>
-              )}
-            </div>
-          )}
-
-          {activeAmenity === 'terminal' && (
-            <div className="h-full flex flex-col bg-[#0d0d0d] overflow-hidden">
-               <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-surface/50">
-                  <div className="flex items-center space-x-2">
-                    <TerminalIcon size={14} className="text-gray-500" />
-                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider font-bold">Terminal Output</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={handleRestartWebContainer}
-                      className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-primary transition-colors flex items-center space-x-1"
-                      title="Restart WebContainer"
-                    >
-                      <History size={14} />
-                      <span className="text-[10px]">Restart</span>
-                    </button>
-                    <button
-                      onClick={handleStopWebContainer}
-                      className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-red-400 transition-colors flex items-center space-x-1"
-                      title="Stop WebContainer"
-                    >
-                      <LogOut size={14} />
-                      <span className="text-[10px]">Stop</span>
-                    </button>
-                  </div>
-               </div>
-               <div className="p-4 flex-1 font-mono text-[11px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
-                  {logs.map((log, i) => (
-                    <div key={i} className="mb-1 leading-relaxed">
-                      <span className="text-primary/50 mr-2 opacity-50">➜</span>
-                      <span className="text-gray-300 whitespace-pre-wrap">{log}</span>
+             </div>
+             <div className="flex-1 p-4 font-mono text-[10px] overflow-y-auto custom-scrollbar bg-black/40">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-primary font-bold">onyx-app $</span>
+                  <span className="text-gray-300">npm run dev</span>
+                </div>
+                <div className="text-gray-500 leading-relaxed">
+                  {logs.slice(-5).map((l, i) => (
+                    <div key={i} className="truncate opacity-50 flex items-center gap-2">
+                      <span className="text-primary/30">➜</span>
+                      <span>{l}</span>
                     </div>
                   ))}
-                  <div className="flex items-center mt-2 group">
-                    <span className="text-primary mr-2 font-bold">onyx-app $</span>
-                    <span className="w-2 h-4 bg-primary animate-pulse mr-4"></span>
-                    <button
-                      onClick={handleRestartWebContainer}
-                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-primary text-[9px] font-mono transition-opacity flex items-center space-x-1"
-                    >
-                      <History size={10} />
-                      <span>refresh terminal</span>
-                    </button>
-                  </div>
-               </div>
-            </div>
-          )}
-
-          {activeAmenity === 'cloud' && <CloudView />}
+                </div>
+                <div className="flex items-center mt-2">
+                   <span className="text-primary mr-2 font-bold">onyx-app $</span>
+                   <span className="w-1.5 h-3 bg-primary animate-pulse"></span>
+                </div>
+             </div>
+          </div>
         </div>
 
-        <div className="w-[400px] xl:w-[450px] flex flex-col bg-surface shadow-2xl shrink-0">
+        <div className="w-[420px] 2xl:w-[480px] flex flex-col bg-surface shadow-2xl shrink-0 border-l border-onyx-border relative z-20">
           <ChatPanel
             messages={messages}
             onSend={handleSendMessage}
@@ -419,35 +525,13 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             setMode={setMode}
             isGenerating={isGenerating}
             onUndo={handleUndo}
-            onAttachContext={handleAttachContext}
+            onAttachContext={() => {}}
           />
         </div>
       </main>
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={appSettings}
-        setSettings={setAppSettings}
-      />
     </div>
   );
 }
 
-function AmenityButton({ active, onClick, icon, label }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`p-3 rounded-xl transition-all relative group ${
-        active
-          ? 'bg-primary text-background shadow-lg shadow-primary/20 scale-105'
-          : 'text-gray-500 hover:text-white hover:bg-white/5'
-      }`}
-    >
-      {icon}
-      <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-        {label}
-      </div>
-    </button>
-  );
-}
+function Activity({ size, className }) { return <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>; }
+function TestTube2({ size, className }) { return <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01a2.83 2.83 0 0 1 0-4L17 3z"/><path d="m16 2 6 6"/><path d="M12 16H4"/></svg>; }

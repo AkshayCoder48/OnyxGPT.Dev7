@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OnyxGPT - Live Preview Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#3713ec",
+                "background-light": "#f6f6f8",
+                "background-dark": "#0a0a0c", // Deep Onyx
+                "onyx-surface": "#131022",
+                "onyx-border": "#2a2640",
+              },
+              fontFamily: {
+                "display": ["Space Grotesk"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+      </script>
+<style>
+        body { font-family: 'Space Grotesk', sans-serif; }
+        .glass-panel {
+            background: rgba(19, 16, 34, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(55, 19, 236, 0.1);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2640;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3713ec;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 h-screen overflow-hidden flex">
+<!-- LEFT PERSISTENT NAVIGATION RAIL -->
+<aside class="w-16 flex flex-col items-center py-6 bg-onyx-surface border-r border-onyx-border z-50">
+<div class="mb-10 text-primary">
+<span class="material-icons text-3xl font-bold">terminal</span>
+</div>
+<nav class="flex flex-col gap-8 flex-1">
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons">folder</span>
+</button>
+<button class="relative group">
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full shadow-[0_0_15px_rgba(55,19,236,0.6)]"></div>
+<span class="material-icons text-primary scale-125">play_circle</span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons">code</span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons">storage</span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons">insights</span>
+</button>
+</nav>
+<div class="mt-auto flex flex-col gap-6">
+<button class="text-slate-500 hover:text-white transition-colors">
+<span class="material-icons text-xl">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-purple-600 border border-white/20"></div>
+</div>
+</aside>
+<!-- MAIN WORKSPACE CONTENT (Fluid Browser Emulator) -->
+<main class="flex-1 flex flex-col min-w-0 bg-background-dark">
+<!-- Browser Toolbar -->
+<header class="h-14 border-b border-onyx-border bg-onyx-surface flex items-center px-4 gap-4">
+<div class="flex items-center gap-2 mr-4">
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-white/5 text-slate-400">
+<span class="material-icons text-sm">arrow_back_ios</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-white/5 text-slate-400">
+<span class="material-icons text-sm">arrow_forward_ios</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-white/5 text-slate-400">
+<span class="material-icons text-sm">refresh</span>
+</button>
+</div>
+<div class="flex-1 h-9 bg-background-dark/50 border border-onyx-border rounded-lg flex items-center px-4 gap-3 max-w-2xl">
+<span class="material-icons text-slate-500 text-sm">lock</span>
+<span class="text-xs text-slate-400 font-mono">localhost:<span class="text-primary font-bold">5173</span></span>
+<span class="text-xs text-slate-600">/dashboard/analytics</span>
+</div>
+<div class="ml-auto flex items-center gap-2">
+<div class="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest">Vite HMR Active</span>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-white/5 text-slate-400">
+<span class="material-icons text-sm">open_in_new</span>
+</button>
+</div>
+</header>
+<!-- Preview Area -->
+<section class="flex-1 bg-background-dark relative overflow-hidden flex flex-col">
+<!-- Simulated App Interface -->
+<div class="flex-1 bg-white dark:bg-[#0c0c0e] overflow-auto">
+<div class="p-8 max-w-6xl mx-auto">
+<div class="flex justify-between items-end mb-10">
+<div>
+<h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Marketing Dashboard</h1>
+<p class="text-slate-500 mt-1">Real-time engagement metrics for Project Onyx.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-onyx-surface text-sm font-medium border border-onyx-border">Export</button>
+<button class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium shadow-lg shadow-primary/20">Create Report</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="p-6 rounded-xl border border-onyx-border bg-onyx-surface/30">
+<p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Total Conversions</p>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="text-3xl font-bold">12,842</span>
+<span class="text-xs text-emerald-500">+14%</span>
+</div>
+</div>
+<div class="p-6 rounded-xl border border-onyx-border bg-onyx-surface/30">
+<p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Active Sessions</p>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="text-3xl font-bold">3,491</span>
+<span class="text-xs text-emerald-500 font-medium">+2.4%</span>
+</div>
+</div>
+<div class="p-6 rounded-xl border border-onyx-border bg-onyx-surface/30">
+<p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Bounce Rate</p>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="text-3xl font-bold">42.1%</span>
+<span class="text-xs text-rose-500 font-medium">-5.1%</span>
+</div>
+</div>
+</div>
+<div class="rounded-xl border border-onyx-border bg-onyx-surface/30 p-1">
+<div class="h-64 rounded-lg bg-gradient-to-b from-primary/10 to-transparent flex items-end p-6 relative overflow-hidden">
+<div class="absolute inset-0 flex items-center justify-center opacity-10">
+<span class="material-icons text-[200px]">auto_graph</span>
+</div>
+<img class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-30" data-alt="Modern abstract business data analytics line chart" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQuyXuz-uq3dWFlYZEHgmcQ18KSzLAd6s-84xNVLu2Jjn-FrGy_pxTaSKo2R6UfiJ0oYb_YPiywMbAXlcs8WSDnxziOaXybGgLOUn_TF2LuhHtXLKaqDYCnMq8w6PmiMFwG3_TWMEKNdu6YO6t4I7vGE3aDgx9k2Be1RJ7N5KFBqBuJsdU0F4JogAZoNMQxQtGyPE45p75Nizp2wVMjs6MzM06OmBYU4RhpQaypdRQQJ2aYjfbV-uN5acEwc1KJsOhcIy8SvYqrnU"/>
+<div class="relative z-10 w-full flex justify-between items-end">
+<div>
+<h3 class="text-lg font-bold">User Growth</h3>
+<p class="text-sm text-slate-400">Quarterly growth trajectory</p>
+</div>
+<div class="flex gap-1 h-32 items-end">
+<div class="w-2 bg-primary rounded-t-full h-[40%]"></div>
+<div class="w-2 bg-primary/60 rounded-t-full h-[60%]"></div>
+<div class="w-2 bg-primary rounded-t-full h-[55%]"></div>
+<div class="w-2 bg-primary/60 rounded-t-full h-[85%]"></div>
+<div class="w-2 bg-primary rounded-t-full h-[70%]"></div>
+<div class="w-2 bg-primary/60 rounded-t-full h-[100%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Status Bar -->
+<footer class="h-8 border-t border-onyx-border bg-onyx-surface flex items-center px-4 justify-between text-[10px] uppercase tracking-widest font-bold text-slate-500">
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1"><span class="material-icons text-[12px]">source</span> main*</span>
+<span class="flex items-center gap-1"><span class="material-icons text-[12px] text-emerald-500">check_circle</span> synced</span>
+</div>
+<div class="flex items-center gap-4">
+<span>UTF-8</span>
+<span class="text-primary">React 18.2.0</span>
+<span class="flex items-center gap-1"><span class="material-icons text-[12px]">wifi</span> Connected</span>
+</div>
+</footer>
+</section>
+</main>
+<!-- RIGHT AI CHAT INTERFACE -->
+<aside class="w-[380px] flex flex-col bg-onyx-surface border-l border-onyx-border">
+<header class="p-6 border-b border-onyx-border">
+<div class="flex items-center justify-between mb-1">
+<h2 class="font-bold flex items-center gap-2">
+<span class="material-icons text-primary text-xl">auto_awesome</span>
+                    OnyxGPT AI
+                </h2>
+<span class="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-slate-400">v4.2-PRO</span>
+</div>
+<p class="text-xs text-slate-500">Conversational UI Architect</p>
+</header>
+<!-- Chat History -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<!-- AI Message -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0 border border-primary/30">
+<span class="material-icons text-sm text-primary">smart_toy</span>
+</div>
+<div class="flex-1 space-y-3">
+<div class="bg-white/5 rounded-xl rounded-tl-none p-4 text-sm leading-relaxed text-slate-300">
+                        The Live Preview for your **Marketing Dashboard** is now running on port 5173. I've implemented the Tailwind components for the analytics cards and growth chart.
+                        <br/><br/>
+                        What would you like to modify next?
+                    </div>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex gap-3 justify-end">
+<div class="flex-1 space-y-3">
+<div class="bg-primary/20 border border-primary/30 rounded-xl rounded-tr-none p-4 text-sm leading-relaxed text-slate-100 ml-12">
+                        Can you make the chart interactive and change the theme to use more of the Onyx secondary colors?
+                    </div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center shrink-0">
+<span class="material-icons text-sm">person</span>
+</div>
+</div>
+<!-- AI Message Thinking -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0 border border-primary/30">
+<span class="material-icons text-sm text-primary">smart_toy</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-1.5 px-1">
+<div class="w-1 h-1 bg-primary rounded-full animate-bounce"></div>
+<div class="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:0.2s]"></div>
+<div class="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:0.4s]"></div>
+<span class="text-[10px] text-slate-500 ml-2 font-medium italic">Onyx is refactoring components...</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Chat Input -->
+<div class="p-6">
+<div class="glass-panel rounded-xl p-2 focus-within:ring-2 ring-primary/50 transition-all">
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-sm placeholder:text-slate-600 resize-none h-24 font-display" placeholder="Ask OnyxGPT to modify this view..."></textarea>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-onyx-border/50">
+<div class="flex gap-2">
+<button class="text-slate-500 hover:text-slate-300 transition-colors">
+<span class="material-icons text-lg">attach_file</span>
+</button>
+<button class="text-slate-500 hover:text-slate-300 transition-colors">
+<span class="material-icons text-lg">image</span>
+</button>
+</div>
+<button class="bg-primary hover:bg-primary/80 text-white px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all group">
+<span class="text-xs font-bold uppercase tracking-widest">Update</span>
+<span class="material-icons text-sm group-hover:translate-x-1 transition-transform">send</span>
+</button>
+</div>
+</div>
+<p class="text-[10px] text-center mt-4 text-slate-600">
+                Shift + Enter for new line • OnyxGPT may generate incorrect code.
+            </p>
+</div>
+</aside>
+</body></html>
