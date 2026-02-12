@@ -19,10 +19,12 @@ export function useAuth() {
         setToken(authToken);
 
         // Notify listeners
-        listenersRef.current.forEach(cb => cb({ user: userData, token: authToken }));
+        const state = { user: userData, token: authToken };
+        listenersRef.current.forEach(cb => cb(state));
       } else {
         setUser(null);
         setToken(null);
+        listenersRef.current.forEach(cb => cb(null));
       }
     } catch (err) {
       console.error('Auth check failed:', err);
@@ -34,42 +36,48 @@ export function useAuth() {
   useEffect(() => {
     checkAuth();
 
-    // Poll for auth changes as a fallback
-    const pollInterval = setInterval(checkAuth, 5000);
+    // Set up BroadcastChannel to listen for auth from the bridge
+    const authChannel = new BroadcastChannel('puter_auth');
 
-    // Listen for auth change messages from potential popups/webhooks
-    const handleMessage = (event) => {
-      // Re-add the listener the user mentioned
-      if (event.data && (event.data.type === 'PUTER_AUTH_SUCCESS' || event.data.type === 'AUTH_SUCCESS')) {
-        checkAuth();
+    authChannel.onmessage = async (event) => {
+      if (event.data.type === 'AUTH_SUCCESS') {
+        console.log("Onyx: Auth successful from bridge");
+        // Manually set token in the main app's puter instance
+        if (puter.auth.setAuthToken) {
+          await puter.auth.setAuthToken(event.data.token);
+        } else if (puter.auth.setToken) {
+           await puter.auth.setToken(event.data.token);
+        }
+        await checkAuth();
+      } else if (event.data.type === 'AUTH_ERROR') {
+        console.error("Onyx: Auth failed from bridge", event.data.error);
       }
     };
-    window.addEventListener('message', handleMessage);
+
+    // Poll for auth changes as a fallback
+    const pollInterval = setInterval(checkAuth, 10000);
 
     return () => {
+      authChannel.close();
       clearInterval(pollInterval);
-      window.removeEventListener('message', handleMessage);
     };
   }, [checkAuth]);
 
-  const signIn = useCallback(async () => {
-    try {
-      // In Puter.js v2, signIn() is usually very robust
-      const result = await puter.auth.signIn();
-      await checkAuth();
-      return result;
-    } catch (err) {
-      console.error('Sign in failed:', err);
-      
-      // Secondary attempt if first fails or is blocked
-      try {
-        await checkAuth();
-        if (user) return user;
-      } catch { /* Ignore */ }
+  const signIn = useCallback(() => {
+    // Open the bridge file in a new window/popup.
+    // This window will NOT be able to talk to 'window.opener' due to COOP,
+    // but BroadcastChannel works across windows on the same origin.
+    const width = 600;
+    const height = 700;
+    const left = (window.innerWidth - width) / 2;
+    const top = (window.innerHeight - height) / 2;
 
-      throw err;
-    }
-  }, [checkAuth, user]);
+    window.open(
+      '/auth-bridge.html',
+      'PuterAuthBridge',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+  }, []);
 
   const signOut = useCallback(async () => {
     try {

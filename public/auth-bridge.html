@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Puter Auth Bridge</title>
+</head>
+<body>
+    <p>Authenticating with Puter...</p>
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        const channel = new BroadcastChannel('puter_auth');
+
+        async function handleSignIn() {
+            try {
+                // This popup is opened from your domain, so it can see this script
+                const result = await puter.auth.signIn();
+                // In v2, getToken might be different, but let's check puter.js docs or common patterns
+                // Actually user suggested puter.auth.getToken()
+                const token = await puter.auth.getAuthToken();
+
+                // Send token to the main application
+                channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
+
+                // Close this bridge window
+                setTimeout(() => window.close(), 500);
+            } catch (err) {
+                channel.postMessage({ type: 'AUTH_ERROR', error: err.message });
+                setTimeout(() => window.close(), 500);
+            }
+        }
+        handleSignIn();
+    </script>
+</body>
+</html>
