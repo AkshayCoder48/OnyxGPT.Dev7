@@ -1,3 +1,4 @@
+import puter from "../../services/puter";
 import React, { useState, useEffect } from 'react';
 import { Database, HardDrive, Network, Cpu, Terminal as TerminalIcon, Plus, RefreshCw, Trash2, X, Check } from 'lucide-react';
 
@@ -11,21 +12,21 @@ export default function CloudView() {
   const [newKV, setNewKV] = useState({ key: '', value: '' });
 
   const fetchData = async () => {
-    if (!window.puter) return;
+    if (!puter) return;
     setLoading(true);
     try {
       if (subTab === 'kv') {
-        const list = await window.puter.kv.list();
+        const list = await puter.kv.list();
         const entries = await Promise.all(list.map(async (key) => {
-          const val = await window.puter.kv.get(key);
+          const val = await puter.kv.get(key);
           return { key, value: typeof val === 'object' ? JSON.stringify(val) : String(val) };
         }));
         setKvData(entries);
       } else if (subTab === 'fs') {
-        const items = await window.puter.fs.readdir('/');
+        const items = await puter.fs.readdir('/');
         setFiles(items);
       } else if (subTab === 'workers') {
-        const workerList = await window.puter.workers.list();
+        const workerList = await puter.workers.list();
         setWorkers(workerList);
       }
     } catch (e) {
@@ -44,7 +45,7 @@ export default function CloudView() {
   const handleAddKV = async () => {
     if (!newKV.key) return;
     try {
-      await window.puter.kv.set(newKV.key, newKV.value);
+      await puter.kv.set(newKV.key, newKV.value);
       setNewKV({ key: '', value: '' });
       setIsAddingKV(false);
       fetchData();
@@ -56,7 +57,7 @@ export default function CloudView() {
   const handleDeleteKV = async (key) => {
     if (window.confirm(`Are you sure you want to delete key: ${key}?`)) {
       try {
-        await window.puter.kv.del(key);
+        await puter.kv.del(key);
         fetchData();
       } catch (err) {
         alert('Error deleting KV: ' + err.message);

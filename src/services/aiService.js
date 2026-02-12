@@ -1,3 +1,4 @@
+import puter from "./puter";
 import * as wc from './webContainer';
 
 const SYSTEM_PROMPT = `You are Onyx, an autonomous AI software engineer.
@@ -22,7 +23,7 @@ You can now know if the terminal is booted. If isTerminalBooted returns false, y
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
-  if (!window.puter) return;
+  if (!puter) return;
 
   const tools = [
     {
@@ -76,7 +77,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
   const modelToUse = options.customModelId || options.model;
 
   while (true) {
-    const response = await window.puter.ai.chat(currentMessages, {
+    const response = await puter.ai.chat(currentMessages, {
       model: modelToUse,
       tools: tools,
       stream: true

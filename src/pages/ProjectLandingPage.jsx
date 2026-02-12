@@ -1,3 +1,4 @@
+import puter from "../services/puter";
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -72,8 +73,8 @@ export default function ProjectLandingPage() {
   const handleCreateProject = async (e) => {
     if (e) e.preventDefault();
     if (!user) {
-      await signIn();
-      return;
+      const result = await signIn();
+      if (!result) return;
     }
 
     const id = Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -86,7 +87,7 @@ export default function ProjectLandingPage() {
       updatedAt: new Date().toISOString(),
     };
     await saveProject(newProject);
-    navigate(`/project/${id}`);
+    navigate(`/project/${id}`, { state: { initialPrompt: promptInput } });
   };
 
   const handleConnectGitHub = async () => {
@@ -100,7 +101,7 @@ export default function ProjectLandingPage() {
     }
     const token = prompt("Please enter your GitHub Personal Access Token (repo scope):");
     if (token) {
-      await window.puter.kv.set('github_token', token);
+      await puter.kv.set('github_token', token);
       loadInitialData();
     }
   };
