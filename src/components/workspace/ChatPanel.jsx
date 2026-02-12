@@ -2,11 +2,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Send, Sparkles, Brain, Zap, Bug, Cpu,
   RotateCcw, Paperclip, Check, AlertCircle,
-  FileCode, Terminal, FileText, Box, Globe, StopCircle,
-  ChevronDown, ChevronUp, Clock
+  FileCode, Terminal, FileText, Box, Globe, StopCircle, Rocket, CheckCircle2,
+  ChevronDown, ChevronUp, Clock, Layout, User, Plus, Search, Command, ArrowRight, Folder, ChevronRight, Settings
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+const ICON_MAP = {
+  Rocket, CheckCircle2, Layout, User, Plus, Search, Command, ArrowRight, Folder, ChevronRight, Settings, Globe, Box, Terminal, FileCode, Cpu, Bug, Zap, Brain, Sparkles
+};
+
+function DynamicIcon({ name, size = 16, className = '' }) {
+  const Icon = ICON_MAP[name] || Rocket;
+  return <Icon size={size} className={className} />;
+}
+
 
 export default function ChatPanel({
   messages, onSend, onStop, model, setModel, mode, setMode, isGenerating
@@ -176,14 +185,14 @@ function renderAssistantContent(msg) {
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                p: ({children}) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
+                p: ({children}) => <p className="leading-relaxed my-1 first:mt-0 last:mb-0">{children}</p>,
                 pre: ({children}) => <pre className="bg-black/50 p-4 rounded-xl my-4 overflow-x-auto border border-white/5 text-[11px] leading-tight shadow-inner">{children}</pre>,
                 code: ({inline, className, children, ...props}) => (
                   <code className={`${className} ${inline ? 'bg-white/10 px-1.5 py-0.5 rounded text-primary' : 'block'}`} {...props}>
                     {children}
                   </code>
                 ),
-                ul: ({children}) => <ul className="list-disc ml-5 mb-3 space-y-1">{children}</ul>,
+                ul: ({children}) => <ul className="list-disc ml-5 my-2 space-y-0.5">{children}</ul>,
                 h2: ({children}) => <h2 className="text-base font-bold text-white mb-2 flex items-center space-x-2 border-b border-white/5 pb-1">{children}</h2>,
               }}
             >
@@ -198,6 +207,24 @@ function renderAssistantContent(msg) {
 
 function ToolCallBlock({ tc }) {
   const [isOpen, setIsOpen] = useState(false);
+  const isPublishTask = tc.name === 'publish_task';
+
+  if (isPublishTask && tc.status === 'success') {
+    return (
+      <div className="my-4 p-4 bg-gradient-to-br from-primary/20 to-transparent border border-primary/30 rounded-2xl animate-in zoom-in-95 duration-500 shadow-xl shadow-primary/5">
+        <div className="flex items-center space-x-4 mb-3">
+          <div className="w-12 h-12 bg-primary text-[#0A0A0A] rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+            <DynamicIcon name={tc.input.icon} size={24} />
+          </div>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-tighter text-primary">Milestone Achieved</div>
+            <div className="text-lg font-bold text-white">{tc.input.name}</div>
+          </div>
+        </div>
+        <p className="text-sm text-gray-400 leading-relaxed bg-black/20 p-3 rounded-xl border border-white/5">{tc.input.summary}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 my-2">
@@ -269,6 +296,7 @@ function getToolIcon(name) {
     case 'manage_todo': return <CheckCircle2 size={14} />;
     case 'write_git_topology': return <Box size={14} />;
     case 'publish_git_topology': return <Globe size={14} />;
+    case 'publish_task': return <Rocket size={14} />;
     default: return <Cpu size={14} />;
   }
 }
@@ -280,6 +308,7 @@ function getToolLabel(name) {
     case 'manage_todo': return 'Updating Todos';
     case 'write_git_topology': return 'Git Action';
     case 'publish_git_topology': return 'Deployment Map';
+    case 'publish_task': return 'Task Completed';
     default: return 'System Call';
   }
 }

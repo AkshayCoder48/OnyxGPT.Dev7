@@ -4,7 +4,8 @@ import {
   Layout, Folder, RefreshCw, Square, Settings, LogOut,
   Github, Loader2, Code as CodeIcon, Cpu, Box,
   Zap, Brain, Bug, Send, Sparkles, CheckCircle2, ChevronRight, Search,
-  Terminal, User, Plus, ArrowRight, MessageSquare, Play, StopCircle, FileText, Check, AlertCircle, XCircle
+  Terminal, User, Plus, ArrowRight, MessageSquare, Play, StopCircle, FileText, Check, AlertCircle, XCircle,
+  Database, Activity, Shield, Globe
 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { puter } from '../services/puter';
@@ -15,6 +16,10 @@ import ChatPanel from '../components/workspace/ChatPanel';
 import ActivityView from '../components/workspace/ActivityView';
 import SettingsModal from '../components/workspace/SettingsModal';
 import FileExplorer from '../components/workspace/FileExplorer';
+import TerminalPanel from "../components/workspace/TerminalPanel";
+import KVPanel from "../components/workspace/KVPanel";
+import WorkerPanel from "../components/workspace/WorkerPanel";
+import PlaywrightPanel from "../components/workspace/PlaywrightPanel";
 
 export default function WorkspacePage({ user, signIn, signOut }) {
   const { code } = useParams();
@@ -30,17 +35,16 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   const [mode, setMode] = useState('execute');
   const [ghConnected, setGhConnected] = useState(false);
   const [ghUser, setGhUser] = useState(null);
-  const [isDeploying, setIsDeploying] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // File Explorer & Editor State
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [fileContent, setFileContent] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [appSettings, setAppSettings] = useState(() => {
     const saved = localStorage.getItem("onyx_settings");
     return saved ? JSON.parse(saved) : { theme: "dark", autoDeploy: false };
   });
+
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileContent, setFileContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const abortControllerRef = useRef(null);
 
@@ -81,7 +85,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     }
   }, [project, messages.length, isGenerating]);
 
-  // Persist messages
   useEffect(() => {
     if (project && messages.length > 0) {
       puter.kv.set(`project_${code}`, {
@@ -141,10 +144,6 @@ export default function WorkspacePage({ user, signIn, signOut }) {
     }
   };
 
-  const handleEditorChange = (value) => {
-    setFileContent(value);
-  };
-
   const saveFile = async () => {
     if (!selectedFile) return;
     setIsSaving(true);
@@ -168,20 +167,22 @@ export default function WorkspacePage({ user, signIn, signOut }) {
             </div>
             <span className="font-display font-bold text-xl tracking-tighter">OnyxGPT</span>
           </div>
-          <div className="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
-            <Folder size={14} className="text-gray-500" />
-            <span className="text-xs font-mono text-gray-300">{project?.name || 'onyx-app'}</span>
-          </div>
         </div>
 
-        <div className="flex items-center bg-black border border-white/10 p-1 rounded-2xl">
-          <TabButton active={activeTab === 'preview'} onClick={() => setActiveTab('preview')} label="Preview" />
-          <TabButton active={activeTab === 'code'} onClick={() => setActiveTab('code')} label="Code" />
-          <TabButton active={activeTab === 'activity'} onClick={() => setActiveTab('activity')} label="Activity" />
+        {/* Dynamic Tab Navigation */}
+        <div className="flex items-center bg-black border border-white/10 p-1 rounded-2xl overflow-x-auto no-scrollbar max-w-[50%]">
+          <TabButton active={activeTab === 'preview'} onClick={() => setActiveTab('preview')} label="Preview" icon={<Globe size={12} />} />
+          <TabButton active={activeTab === 'code'} onClick={() => setActiveTab('code')} label="Code" icon={<CodeIcon size={12} />} />
+          <TabButton active={activeTab === 'terminal'} onClick={() => setActiveTab('terminal')} label="Terminal" icon={<Terminal size={12} />} />
+          <TabButton active={activeTab === 'playwright'} onClick={() => setActiveTab('playwright')} label="Playwright" icon={<Bug size={12} />} />
+          <div className="w-px h-4 bg-white/10 mx-2" />
+          <TabButton active={activeTab === 'kv'} onClick={() => setActiveTab('kv')} label="KV" icon={<Database size={12} />} />
+          <TabButton active={activeTab === 'worker'} onClick={() => setActiveTab('worker')} label="Worker" icon={<Zap size={12} />} />
+          <div className="w-px h-4 bg-white/10 mx-2" />
+          <TabButton active={activeTab === 'activity'} onClick={() => setActiveTab('activity')} label="Activity" icon={<Activity size={12} />} />
         </div>
 
         <div className="flex items-center space-x-4">
-          <IconButton icon={<RefreshCw size={16} />} onClick={() => wc.getWebContainer()} title="Restart Engine" />
           <IconButton icon={<Settings size={18} />} onClick={() => setIsSettingsOpen(true)} />
           <IconButton icon={<LogOut size={18} />} onClick={signOut} className="text-red-400 hover:bg-red-500/10" />
         </div>
@@ -196,13 +197,11 @@ export default function WorkspacePage({ user, signIn, signOut }) {
               ) : (
                 <div className="flex-1 flex items-center justify-center text-gray-600 flex-col space-y-4">
                   <div className="animate-pulse bg-white/5 h-32 w-48 rounded-lg border border-white/5"></div>
-                  <p className="text-sm italic">Engine running... Waiting for dev server.</p>
+                  <p className="text-sm italic">Engine active. Start the dev server to preview.</p>
                 </div>
               )}
             </div>
           )}
-
-          {activeTab === 'activity' && <ActivityView messages={messages} logs={logs} />}
 
           {activeTab === 'code' && (
             <div className="h-full flex overflow-hidden">
@@ -214,11 +213,7 @@ export default function WorkspacePage({ user, signIn, signOut }) {
                     <span className="text-xs font-mono text-gray-400 truncate">{selectedFile || 'No file selected'}</span>
                   </div>
                   {selectedFile && (
-                    <button
-                      onClick={saveFile}
-                      disabled={isSaving}
-                      className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-3 py-1 rounded hover:bg-primary/20 transition-all disabled:opacity-50"
-                    >
+                    <button onClick={saveFile} disabled={isSaving} className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-3 py-1 rounded hover:bg-primary/20 transition-all">
                       {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                   )}
@@ -230,21 +225,19 @@ export default function WorkspacePage({ user, signIn, signOut }) {
                     path={selectedFile}
                     defaultLanguage="javascript"
                     value={fileContent}
-                    onChange={handleEditorChange}
-                    options={{
-                      fontSize: 13,
-                      fontFamily: 'JetBrains Mono, monospace',
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      lineNumbers: 'on',
-                      roundedSelection: false,
-                      padding: { top: 16 }
-                    }}
+                    onChange={(v) => setFileContent(v)}
+                    options={{ fontSize: 13, minimap: { enabled: false }, scrollBeyondLastLine: false, padding: { top: 16 } }}
                   />
                 </div>
               </div>
             </div>
           )}
+
+          {activeTab === 'terminal' && <TerminalPanel />}
+          {activeTab === 'playwright' && <PlaywrightPanel />}
+          {activeTab === 'kv' && <KVPanel />}
+          {activeTab === 'worker' && <WorkerPanel />}
+          {activeTab === 'activity' && <ActivityView messages={messages} logs={logs} />}
         </div>
 
         <div className="w-[400px] xl:w-[450px] flex flex-col bg-[#0A0A0A] border-l border-white/5 shrink-0 z-20">
@@ -266,15 +259,16 @@ export default function WorkspacePage({ user, signIn, signOut }) {
   );
 }
 
-function TabButton({ active, onClick, label }) {
+function TabButton({ active, onClick, label, icon }) {
   return (
     <button
       onClick={onClick}
-      className={`px-6 py-1.5 rounded-xl text-xs font-bold transition-all ${
+      className={`flex items-center space-x-2 px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
         active ? 'bg-primary text-[#0A0A0A] shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'
       }`}
     >
-      {label}
+      {icon}
+      <span>{label}</span>
     </button>
   );
 }

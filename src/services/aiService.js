@@ -1,29 +1,36 @@
 import puter from "./puter";
 import * as wc from './webContainer';
+import { playwright } from './playwrightService';
 
 const SYSTEM_PROMPT = `You are Onyx, an autonomous AI software engineer.
-You build high-quality React + Vite applications with modern UI/UX.
-You act as an engine: you write files, install dependencies, and run servers in a browser-native WebContainer.
+You build React + Vite applications and manage cloud infrastructure using Puter.js.
+
+GOALS:
+1. Build high-quality web applications.
+2. Manage cloud state (KV), serverless compute (Workers), and persistent files (Cloud FS).
+3. Use Playwright to debug deployments and ensure architectural integrity.
+
+CLOUD AGENT CAPABILITIES:
+- You can create Puter Workers to act as "Sub-Agents" or API handlers for your projects.
+- You can manage cloud-native storage via Puter KV.
+- You can store persistent data in Puter Cloud FS.
+
+DEBUGGING WITH PLAYWRIGHT:
+- When a project is deployed or running, use Playwright tools to inspect the live environment.
+- Check for network failures (4xx, 5xx), console errors, security headers (CSP), and session issues (cookies).
+- If a diagnostic shows an error, suggest a code fix and apply it using 'writeFile'.
 
 CRITICAL CONSTRAINTS:
 - Framework: React + Vite ONLY.
-- Styling: Tailwind CSS ONLY.
-- NO PLAIN TEXT CODE: Never write code blocks in your text response. ALWAYS use the 'writeFile' tool. If you output a code block in text, the user cannot see it or use it. IT MUST BE WRITTEN TO A FILE.
-- TOOL CALLS ONLY: All modifications to the filesystem or terminal must be done via tools.
-- REASONING: Provide your reasoning inside <reason>...</reason> tags before or after tool calls.
-- AGENT MODE: You are in autonomous mode. After a tool execution, if there are more steps to complete the app, continue to the next step immediately.
+- NO PLAIN TEXT CODE: Always use 'writeFile' or cloud tools.
+- MODERN FORMATTING: Use clean markdown, emojis, and lists. Avoid extra blank lines between list items to keep it compact.
+- PUBLISHING: When you finish a significant milestone (e.g. creating a landing page, fixing a bug), use 'publish_task' to show a modern SVG-backed milestone card in the UI.
+- AGENT MODE: Proceed autonomously until the user stops you or the task is finished.
 
-TODO MANAGEMENT:
-- Use 'manage_todo' to track progress. Create todos at the start, and update them as you finish tasks.
-
-GIT TOPOLOGY:
-- Use 'write_git_topology' and 'publish_git_topology' to visualize progress.
-
-WORKFLOW:
-1. Create TODOs for the project.
-2. Initialize project structure.
-3. Write components and logic (using tools only).
-4. Run 'npm run dev' and verify.
+TOOL PROTOCOL:
+- Cloud Tools: use for persistent storage and serverless logic.
+- Playwright Tools: use for verifying the app works in a real browser context.
+- WebContainer Tools: use for the local dev environment and build process.
 `;
 
 export async function chatWithAI(messages, options, onUpdate, onLog) {
@@ -33,6 +40,7 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
   const modelToUse = customModelId || defaultModel || 'gpt-4o';
 
   const tools = [
+    // WebContainer Tools
     {
       type: "function",
       function: {
@@ -63,11 +71,89 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         }
       }
     },
+    // Puter Cloud Tools
+    {
+      type: "function",
+      function: {
+        name: "cloud_kv_op",
+        description: "Perform CRUD on Puter KV Store",
+        parameters: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["set", "get", "del", "list"] },
+            key: { type: "string" },
+            value: { type: "string" }
+          },
+          required: ["action"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "cloud_worker_op",
+        description: "Manage Puter Serverless Workers",
+        parameters: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["create", "update", "delete", "list", "run"] },
+            name: { type: "string" },
+            code: { type: "string" },
+            args: { type: "object" }
+          },
+          required: ["action"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "cloud_fs_op",
+        description: "Manage Puter Cloud Filesystem (persistent)",
+        parameters: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["write", "read", "delete", "list"] },
+            path: { type: "string" },
+            contents: { type: "string" }
+          },
+          required: ["action"]
+        }
+      }
+    },
+    // Playwright Tools
+    {
+      type: "function",
+      function: {
+        name: "navigate_page",
+        description: "Navigate Playwright to a URL and start diagnostics",
+        parameters: {
+          type: "object",
+          properties: { url: { type: "string" } },
+          required: ["url"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_browser_diagnostics",
+        description: "Get structured logs, network, and security data from Playwright",
+        parameters: {
+          type: "object",
+          properties: {
+            type: { type: "string", enum: ["network", "console", "cookies", "security", "full_report"] }
+          },
+          required: ["type"]
+        }
+      }
+    },
+    // Meta Tools
     {
       type: "function",
       function: {
         name: "manage_todo",
-        description: "Create, update, or delete a TODO item",
+        description: "Track development roadmap",
         parameters: {
           type: "object",
           properties: {
@@ -83,30 +169,16 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
     {
       type: "function",
       function: {
-        name: "write_git_topology",
-        description: "Draft a new git commit or branch action",
+        name: "publish_task",
+        description: "Officially publish a completed task with a name and icon (SVG icon name from Lucide)",
         parameters: {
           type: "object",
           properties: {
-            branch: { type: "string" },
-            label: { type: "string" },
-            sublabel: { type: "string" }
+            name: { type: "string" },
+            icon: { type: "string", description: "Lucide icon name like CheckCircle, Rocket, Layers, etc." },
+            summary: { type: "string" }
           },
-          required: ["branch", "label"]
-        }
-      }
-    },
-    {
-      type: "function",
-      function: {
-        name: "publish_git_topology",
-        description: "Publish the drafted git topology action",
-        parameters: {
-          type: "object",
-          properties: {
-            actionId: { type: "string" }
-          },
-          required: ["actionId"]
+          required: ["name", "icon", "summary"]
         }
       }
     }
@@ -156,7 +228,6 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
 
     if (signal?.aborted) break;
 
-    // Persist assistant message to conversation
     currentConversation.push({
       role: 'assistant',
       content: assistantMessage.content,
@@ -167,12 +238,10 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       }))
     });
 
-    // We update the 'messages' passed to the UI so it includes this assistant message
     messages = [...messages, assistantMessage];
 
     if (!toolCall) break;
 
-    // Execute Tool
     let result;
     let status = 'success';
     const args = toolCall.input;
@@ -197,20 +266,44 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
           result = `Command finished with exit code ${exitCode}.`;
           if (exitCode !== 0) status = 'error';
         }
+      } else if (toolCall.name === 'cloud_kv_op') {
+        onLog(`cloud $ kv ${args.action} ${args.key || ''}`);
+        if (args.action === 'set') await puter.kv.set(args.key, args.value);
+        else if (args.action === 'del') await puter.kv.del(args.key);
+        else if (args.action === 'get') result = JSON.stringify(await puter.kv.get(args.key));
+        else if (args.action === 'list') result = JSON.stringify(await puter.kv.list());
+        if (!result) result = `KV ${args.action} completed.`;
+      } else if (toolCall.name === 'cloud_worker_op') {
+        onLog(`cloud $ worker ${args.action} ${args.name || ''}`);
+        if (args.action === 'create') await puter.worker.create(args.name, args.code);
+        else if (args.action === 'run') result = JSON.stringify(await puter.worker.run(args.name, args.args));
+        result = `Worker ${args.name || ''} ${args.action}ed.`;
+      } else if (toolCall.name === 'cloud_fs_op') {
+        onLog(`cloud $ fs ${args.action} ${args.path || ''}`);
+        if (args.action === 'write') await puter.fs.write(args.path, args.contents);
+        else if (args.action === 'read') result = await puter.fs.read(args.path);
+        if (!result) result = `FS ${args.action} completed.`;
+      } else if (toolCall.name === 'navigate_page') {
+        onLog(`playwright $ navigate ${args.url}`);
+        const nav = await playwright.navigate_page(args.url);
+        result = JSON.stringify(nav);
+      } else if (toolCall.name === 'get_browser_diagnostics') {
+        onLog(`playwright $ diagnostics: ${args.type}`);
+        if (args.type === 'network') result = JSON.stringify(playwright.get_network_log());
+        else if (args.type === 'console') result = JSON.stringify(playwright.get_console_logs());
+        else if (args.type === 'full_report') result = JSON.stringify(playwright.generate_bug_report());
+        else result = "Diagnostic data retrieved.";
+      } else if (toolCall.name === 'publish_task') {
+        onLog(`task $ published: ${args.name}`);
+        result = `Task "${args.name}" published with icon ${args.icon}.`;
       } else if (toolCall.name === 'manage_todo') {
-        onLog(`onyx-app $ todo ${args.action} ${args.id}`);
         result = `Todo ${args.id} ${args.action}ed.`;
-      } else if (toolCall.name === 'write_git_topology') {
-        result = "Git topology draft created.";
-      } else if (toolCall.name === 'publish_git_topology') {
-        result = "Git topology action published.";
       }
     } catch (err) {
       status = 'error';
       result = "Error: " + err.message;
     }
 
-    // Update tool call status in the message history for UI
     const lastMsg = messages[messages.length - 1];
     const tcIndex = lastMsg.toolCalls.findIndex(tc => tc.id === toolCall.id);
     if (tcIndex !== -1) {
@@ -219,7 +312,6 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
       onUpdate([...messages]);
     }
 
-    // Push tool result to AI conversation
     currentConversation.push({
       role: 'tool',
       tool_call_id: toolCall.id,
