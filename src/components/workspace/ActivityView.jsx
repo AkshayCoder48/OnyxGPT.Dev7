@@ -1,275 +1,156 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-  Terminal,
-  GitBranch,
-  Clock,
-  Download,
-  Filter,
-  FileCode,
-  Zap,
-  CheckCircle2,
-  AlertCircle,
-  Brain
+  CheckCircle2, Clock, GitCommit, GitBranch,
+  Terminal, AlertCircle, ListTodo, Circle, CheckCircle,
+  Trash2, Edit3, Sparkles
 } from 'lucide-react';
 
-export default function ActivityView({ messages = [] }) {
-  const logs = [];
-  const gitNodes = [];
-  const drafts = new Map();
-
-  messages.forEach(msg => {
-    if (msg.role === 'assistant') {
-      // Extract reasoning
-      const reasonMatch = msg.content.match(/<reason>([\s\S]*?)<\/reason>/g);
-      if (reasonMatch) {
-        reasonMatch.forEach(rm => {
-          logs.push({
-            type: 'reasoning',
-            content: rm.replace(/<\/?reason>/g, '').trim(),
-            timestamp: msg.timestamp || new Date().toISOString(),
-          });
-        });
-      }
-
-      // Add tool calls and handle git topology
-      if (msg.toolCalls) {
-        msg.toolCalls.forEach(tc => {
-          // General execution logs
-          logs.push({
-            type: 'tool',
-            name: tc.name,
-            input: tc.input,
-            status: tc.status,
-            result: tc.result,
-            timestamp: tc.timestamp || msg.timestamp,
-            completedAt: tc.completedAt
-          });
-
-          // Git Topology logic
-          if (tc.name === 'write_git_topology') {
-            drafts.set(tc.id, {
-              branch: tc.input.branch,
-              label: tc.input.label,
-              sublabel: tc.input.sublabel,
-              timestamp: tc.timestamp,
-              id: tc.id
-            });
-          } else if (tc.name === 'publish_git_topology') {
-            const actionId = tc.input.actionId;
-            let nodeToPublish = null;
-            if (actionId === 'latest') {
-              const draftArray = Array.from(drafts.values());
-              nodeToPublish = draftArray[draftArray.length - 1];
-            } else {
-              nodeToPublish = drafts.get(actionId);
-            }
-
-            if (nodeToPublish && tc.status === 'success') {
-               gitNodes.push({
-                 ...nodeToPublish,
-                 publishedAt: tc.completedAt || tc.timestamp
-               });
-            }
+export default function ActivityView({ messages, logs }) {
+  // Extract TODOs from tool calls
+  const todos = useMemo(() => {
+    const todoMap = new Map();
+    messages.forEach(msg => {
+      msg.toolCalls?.forEach(tc => {
+        if (tc.name === 'manage_todo') {
+          const { action, id, text, status } = tc.input;
+          if (action === 'create') {
+            todoMap.set(id, { id, text, status: status || 'pending', updatedAt: tc.timestamp });
+          } else if (action === 'update') {
+            const existing = todoMap.get(id) || {};
+            todoMap.set(id, { ...existing, id, ...tc.input, updatedAt: tc.timestamp });
+          } else if (action === 'delete') {
+            todoMap.delete(id);
           }
-        });
-      }
-    }
-  });
+        }
+      });
+    });
+    return Array.from(todoMap.values()).sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt));
+  }, [messages]);
 
-  // Sort logs by timestamp
-  logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  // Sort git nodes by published date (descending for display)
-  gitNodes.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+  // Extract Git Topology
+  const topology = useMemo(() => {
+    const actions = [];
+    messages.forEach(msg => {
+      msg.toolCalls?.forEach(tc => {
+        if (tc.name === 'write_git_topology' || tc.name === 'publish_git_topology') {
+           // We'll simplify this for display
+           if (tc.name === 'write_git_topology') {
+             actions.push({ ...tc.input, type: 'git', timestamp: tc.timestamp, status: tc.status });
+           }
+        }
+      });
+    });
+    return actions;
+  }, [messages]);
 
   return (
-    <div className="h-full flex bg-[#0A0A0A] overflow-hidden">
-      {/* Sidebar: Git Topology */}
-      <aside className="w-64 border-r border-white/5 flex flex-col shrink-0">
-        <div className="p-6 border-b border-white/5">
-          <div className="flex items-center space-x-2 text-primary mb-1">
-            <GitBranch size={18} />
-            <h3 className="font-display font-bold text-sm">Git Topology</h3>
-          </div>
-          <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Auto-generated Flow</p>
-        </div>
+    <div className="h-full flex flex-col bg-[#0A0A0A] overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-6 space-y-10 custom-scrollbar">
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-8 relative custom-scrollbar">
-          {gitNodes.length > 0 && (
-            <div className="absolute left-[29px] top-8 bottom-8 w-[1px] bg-gradient-to-b from-primary/50 via-purple-500/50 to-transparent"></div>
-          )}
-
-          {gitNodes.length === 0 ? (
-            <div className="text-[10px] text-gray-600 italic text-center py-10 px-4">
-              No git actions published yet.
+        {/* TODOs Section */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <div className="flex items-center space-x-2">
+              <ListTodo size={18} className="text-primary" />
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Project Roadmap</h3>
             </div>
-          ) : (
-            gitNodes.map((node, i) => (
-              <GitNode
-                key={node.id}
-                active={i === 0}
-                branch={node.branch}
-                label={node.label}
-                time={formatRelativeTime(node.publishedAt)}
-                sublabel={node.sublabel}
-              />
-            ))
-          )}
-        </div>
-      </aside>
-
-      {/* Main Content: Execution Logs */}
-      <main className="flex-1 flex flex-col overflow-hidden border-l border-white/5">
-        <header className="p-6 border-b border-white/5 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-xl font-display font-bold text-white">Execution Logs</h2>
-            <p className="text-xs text-gray-500 mt-1">Real-time tool output and AI reasoning</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button className="p-2 hover:bg-white/5 rounded-lg text-gray-500 transition-colors border border-white/5">
-              <Filter size={16} />
-            </button>
-            <button className="p-2 hover:bg-white/5 rounded-lg text-gray-500 transition-colors border border-white/5">
-              <Download size={16} />
-            </button>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          {logs.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-600 space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
-                <Clock size={32} className="opacity-20" />
-              </div>
-              <p className="text-sm font-medium italic">Waiting for execution data...</p>
+            <div className="text-[10px] font-mono text-gray-600 bg-white/5 px-2 py-0.5 rounded">
+              {todos.filter(t => t.status === 'completed').length}/{todos.length} Done
             </div>
-          ) : (
-            logs.map((log, i) => (
-              <LogEntry key={i} log={log} />
-            ))
-          )}
-        </div>
-      </main>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #1a1a1a;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #222;
-        }
-      `}} />
-    </div>
-  );
-}
-
-function GitNode({ active, branch, label, time, sublabel }) {
-  return (
-    <div className="relative pl-10 group cursor-default animate-in slide-in-from-left-2 duration-300">
-      <div className={`absolute left-0 top-1 w-6 h-6 rounded-full border-2 flex items-center justify-center bg-[#0A0A0A] z-10 transition-all ${
-        active ? 'border-primary shadow-[0_0_10px_rgba(0,228,204,0.4)]' : 'border-gray-800'
-      }`}>
-        <div className={`w-2 h-2 rounded-full ${active ? 'bg-primary' : 'bg-gray-800'}`}></div>
-      </div>
-      <div className="flex items-center justify-between mb-1">
-        <span className={`text-[10px] font-mono ${active ? 'text-primary' : 'text-gray-500'}`}>{branch}</span>
-        <span className="text-[10px] text-gray-600">{time}</span>
-      </div>
-      <div className={`text-xs font-bold transition-colors ${active ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'}`}>{label}</div>
-      {sublabel && <div className="text-[10px] text-gray-600 mt-1 leading-tight">{sublabel}</div>}
-    </div>
-  );
-}
-
-function LogEntry({ log }) {
-  if (log.type === 'reasoning') {
-    return (
-      <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 animate-in fade-in duration-500">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2 text-primary">
-            <div className="bg-primary/20 p-1.5 rounded-lg">
-              <Brain size={14} />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest">AI Thought</span>
           </div>
-          <span className="text-[10px] font-mono text-primary/40">
-            {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}
-          </span>
-        </div>
-        <div className="text-sm text-gray-300 italic leading-relaxed font-serif pl-2 border-l-2 border-primary/20">
-          "{log.content}"
-        </div>
-      </div>
-    );
-  }
 
-  const isError = log.status === 'error';
-  const isSuccess = log.status === 'success';
-
-  return (
-    <div className={`bg-white/5 border border-white/5 rounded-xl overflow-hidden transition-all hover:bg-white/10 ${isError ? 'border-red-500/20' : ''}`}>
-      <div className="p-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${
-            log.name === 'runCommand' ? 'bg-purple-500/20 text-purple-400' :
-            log.name.includes('git') ? 'bg-orange-500/20 text-orange-400' :
-            'bg-blue-500/20 text-blue-400'
-          }`}>
-            {log.name === 'runCommand' ? 'Shell' : log.name.includes('git') ? 'Git' : 'System'}
-          </div>
-          <div className="font-mono text-xs text-gray-200">
-            {log.name}({log.input?.path || log.input?.command || log.input?.label || ''})
-          </div>
-        </div>
-        <div className="flex items-center space-x-4">
-          {log.status === 'running' && <Zap size={14} className="text-primary animate-pulse" />}
-          {isSuccess && <CheckCircle2 size={14} className="text-primary" />}
-          {isError && <AlertCircle size={14} className="text-red-400" />}
-          <span className="text-[10px] font-mono text-gray-600">
-             {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}
-          </span>
-        </div>
-      </div>
-
-      <div className="px-4 pb-4">
-        <div className="bg-black/40 rounded-lg p-3 border border-white/5 flex items-start space-x-3">
-           <div className="bg-white/5 p-2 rounded-lg text-gray-500">
-              {log.name === 'writeFile' ? <FileCode size={16} /> : <Terminal size={16} />}
-           </div>
-           <div className="flex-1 overflow-hidden">
-              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter mb-1">
-                {log.name === 'writeFile' ? 'Asset Management' :
-                 log.name.includes('git') ? 'Topology Update' : 'Execution'}
-              </div>
-              <div className="text-xs font-mono text-gray-300 truncate">
-                {log.input?.path || `${log.input?.command || ''} ${log.input?.args?.join(' ') || ''}` || log.input?.label || log.name}
-              </div>
-              {log.result && (
-                <div className="mt-2 pt-2 border-t border-white/5 text-[11px] text-gray-500 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
-                  {log.result}
+          <div className="grid grid-cols-1 gap-2">
+            {todos.length > 0 ? (
+              todos.map(todo => (
+                <div
+                  key={todo.id}
+                  className={`group flex items-center justify-between p-3 rounded-xl border transition-all ${
+                    todo.status === 'completed'
+                      ? 'bg-green-500/5 border-green-500/10 opacity-60'
+                      : 'bg-white/5 border-white/5 hover:border-primary/20 hover:bg-white/[0.07]'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                      todo.status === 'completed'
+                        ? 'bg-green-500 border-green-500 text-[#0A0A0A]'
+                        : 'border-white/20 text-transparent'
+                    }`}>
+                      <Check size={12} strokeWidth={4} />
+                    </div>
+                    <span className={`text-sm ${todo.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-300'}`}>
+                      {todo.text}
+                    </span>
+                  </div>
+                  <div className="text-[9px] font-mono text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                    ID: {todo.id}
+                  </div>
                 </div>
-              )}
-           </div>
-        </div>
+              ))
+            ) : (
+              <div className="py-8 text-center border border-dashed border-white/5 rounded-2xl">
+                 <Sparkles size={24} className="text-gray-800 mx-auto mb-2" />
+                 <p className="text-xs text-gray-600 italic">No tasks assigned yet. Onyx will generate them soon.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Development Timeline (Git Topology) */}
+        <section className="space-y-6">
+          <div className="flex items-center space-x-2 border-b border-white/5 pb-2">
+            <GitBranch size={18} className="text-blue-500" />
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Development Timeline</h3>
+          </div>
+
+          <div className="space-y-0 ml-3 border-l border-white/10 pl-6">
+            {topology.map((item, i) => (
+              <div key={i} className="relative pb-8 last:pb-0">
+                <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-blue-500 border-2 border-[#0A0A0A] shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                <div className="bg-white/5 border border-white/5 rounded-xl p-4 hover:border-blue-500/30 transition-all">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-white">{item.label}</span>
+                    <span className="text-[9px] font-mono text-gray-600 uppercase tracking-tighter bg-white/5 px-1.5 py-0.5 rounded">
+                      {item.branch}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">{item.sublabel || 'Continuous integration and deployment step.'}</p>
+                  <div className="flex items-center space-x-2 text-[9px] font-mono text-blue-500/60 uppercase tracking-widest">
+                    <Clock size={10} />
+                    <span>{new Date(item.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Execution Logs */}
+        <section className="space-y-4">
+          <div className="flex items-center space-x-2 border-b border-white/5 pb-2">
+            <Terminal size={18} className="text-purple-500" />
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Execution Logs</h3>
+          </div>
+          <div className="bg-black/40 rounded-2xl border border-white/5 p-4 font-mono text-[11px] leading-relaxed max-h-96 overflow-y-auto custom-scrollbar">
+            {logs.length > 0 ? (
+              logs.map((log, i) => (
+                <div key={i} className={`py-1 border-b border-white/[0.02] last:border-0 ${
+                  log.includes('Error') ? 'text-red-400' :
+                  log.includes('$') ? 'text-primary/70 font-bold' : 'text-gray-500'
+                }`}>
+                  {log}
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-700 italic">Listening for system events...</div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
 }
 
-function formatRelativeTime(timestamp) {
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return new Date(timestamp).toLocaleDateString();
+function Check({ size, strokeWidth }) {
+  return <CheckCircle size={size} strokeWidth={strokeWidth} />;
 }
