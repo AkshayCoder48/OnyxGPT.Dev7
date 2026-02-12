@@ -34,12 +34,12 @@ export default function ChatPanel({
   return (
     <div className="flex flex-col h-full bg-surface">
       {/* Header */}
-      <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-background/20">
+      <div className="p-4 border-b border-onyx-border flex items-center justify-between bg-background/20">
         <div className="flex items-center space-x-2">
            <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(0,228,204,0.6)]"></div>
            <h3 className="font-display font-bold text-[10px] text-gray-400 uppercase tracking-widest">Chat Interface</h3>
         </div>
-        <div className="flex items-center bg-background border border-gray-800 rounded px-2 py-1 space-x-2 group focus-within:border-primary transition-all">
+        <div className="flex items-center bg-background border border-onyx-border rounded px-2 py-1 space-x-2 group focus-within:border-primary transition-all">
           <Cpu size={12} className="text-gray-500 group-focus-within:text-primary" />
           <input
             type="text"
@@ -59,7 +59,7 @@ export default function ChatPanel({
               <div className={`inline-block p-3 rounded-2xl text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-primary text-background font-medium shadow-[0_4px_12px_rgba(0,228,204,0.2)] rounded-tr-none'
-                  : 'bg-background border border-gray-800 text-gray-200 rounded-tl-none prose prose-invert prose-sm max-w-none'
+                  : 'bg-background border border-onyx-border text-gray-200 rounded-tl-none prose prose-invert prose-sm max-w-none'
               }`}>
                 {msg.role === 'user' ? (
                   <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -75,7 +75,7 @@ export default function ChatPanel({
       </div>
 
       {/* Input & Modes */}
-      <div className="p-4 border-t border-gray-800 bg-background/20 space-y-4">
+      <div className="p-4 border-t border-onyx-border bg-background/20 space-y-4">
         {/* Actions Row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -114,7 +114,7 @@ export default function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             placeholder={isGenerating ? 'Onyx is coding...' : 'Describe what to build next...'}
             rows={3}
-            className="w-full bg-background border border-gray-800 rounded-2xl p-4 pr-12 outline-none focus:border-primary transition-all resize-none disabled:opacity-50 text-sm shadow-inner"
+            className="w-full bg-background border border-onyx-border rounded-2xl p-4 pr-12 outline-none focus:border-primary transition-all resize-none disabled:opacity-50 text-sm shadow-inner"
             disabled={isGenerating}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -246,7 +246,7 @@ function ModeButton({ active, onClick, icon, label, activeColor }) {
       className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${
         active
           ? `${activeColor} text-white border-transparent shadow-lg`
-          : 'bg-background text-gray-500 border-gray-800 hover:text-gray-300'
+          : 'bg-background text-gray-500 border-onyx-border hover:text-gray-300'
       }`}
     >
       {icon}

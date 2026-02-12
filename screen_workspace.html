@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OnyxGPT Project Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3713ec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0f1117",
+                        "surface-dark": "#1a1b26",
+                        "border-dark": "#2b2d3d",
+                        "code-bg": "#1e1e2e",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body { font-family: 'Space Grotesk', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2b2d3d; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3713ec; }
+        .prose-chat h3 { @apply text-sm font-bold mt-4 mb-2 text-slate-200; }
+        .prose-chat p { @apply mb-3 text-slate-300; }
+        .prose-chat ul { @apply list-disc ml-4 mb-3 space-y-1; }
+        .prose-chat code { @apply font-mono text-xs bg-slate-800 px-1 rounded text-primary; }
+        .prose-chat pre { @apply bg-code-bg p-3 rounded-lg border border-border-dark my-3 font-mono text-xs overflow-x-auto; }
+        .nav-sidebar-item { @apply flex items-center justify-center size-12 text-slate-500 hover:text-white transition-colors relative; }
+        .nav-sidebar-item.active { @apply text-primary; }
+        .nav-sidebar-item.active::after { content: ''; @apply absolute left-0 h-6 w-0.5 bg-primary rounded-r; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased overflow-hidden">
+<div class="flex flex-col h-screen w-full">
+<header class="h-14 border-b border-slate-200 dark:border-border-dark flex items-center justify-between px-6 bg-white dark:bg-surface-dark shrink-0 z-20">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">deployed_code</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-sm font-bold tracking-tight">OnyxGPT Project Workspace</h1>
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-emerald-500"></span>
+<span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold">Dev Server Active</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center gap-1 px-3 py-1 bg-slate-100 dark:bg-border-dark/50 rounded-full border border-slate-200 dark:border-border-dark">
+<span class="material-symbols-outlined text-xs text-primary">account_tree</span>
+<span class="text-xs font-medium">main</span>
+</div>
+<button class="flex items-center justify-center size-9 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
+<span class="material-symbols-outlined text-slate-500">notifications</span>
+</button>
+<button class="flex items-center justify-center size-9 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
+<span class="material-symbols-outlined text-slate-500">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 dark:bg-border-dark mx-1"></div>
+<div class="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs border border-primary/30">
+                JD
+            </div>
+</div>
+</header>
+<div class="flex-1 flex overflow-hidden">
+<aside class="w-[52px] border-r border-slate-200 dark:border-border-dark bg-white dark:bg-surface-dark flex flex-col items-center py-4 gap-2 shrink-0 z-10">
+<button class="nav-sidebar-item" title="Explorer">
+<span class="material-symbols-outlined">folder</span>
+</button>
+<button class="nav-sidebar-item" title="Preview">
+<span class="material-symbols-outlined">play_circle</span>
+</button>
+<button class="nav-sidebar-item" title="Terminal">
+<span class="material-symbols-outlined">terminal</span>
+</button>
+<button class="nav-sidebar-item" title="Database">
+<span class="material-symbols-outlined">database</span>
+</button>
+<button class="nav-sidebar-item" title="Activity">
+<span class="material-symbols-outlined">pulse_alert</span>
+</button>
+<div class="mt-auto">
+<button class="nav-sidebar-item active" title="Chat">
+<span class="material-symbols-outlined">chat_bubble</span>
+</button>
+<button class="nav-sidebar-item" title="Extensions">
+<span class="material-symbols-outlined">extension</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 flex overflow-hidden">
+<div class="flex-1 flex flex-col border-r border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark overflow-hidden">
+<nav class="flex border-b border-slate-200 dark:border-border-dark bg-white dark:bg-surface-dark px-4 gap-1">
+<button class="px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 border-primary text-primary">
+<span class="material-symbols-outlined text-lg">visibility</span>
+                        Preview
+                    </button>
+<button class="px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200">
+<span class="material-symbols-outlined text-lg">terminal</span>
+                        Terminal
+                    </button>
+<button class="px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200">
+<span class="material-symbols-outlined text-lg">database</span>
+                        Database
+                    </button>
+<button class="px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200">
+<span class="material-symbols-outlined text-lg">history</span>
+                        Activity
+                    </button>
+</nav>
+<div class="flex-1 p-4 overflow-hidden flex flex-col">
+<div class="flex-1 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="h-10 bg-slate-50 dark:bg-[#15161e] border-b border-slate-200 dark:border-border-dark flex items-center px-4 justify-between">
+<div class="flex items-center gap-4">
+<div class="flex gap-1.5">
+<div class="size-2.5 rounded-full bg-red-400"></div>
+<div class="size-2.5 rounded-full bg-amber-400"></div>
+<div class="size-2.5 rounded-full bg-emerald-400"></div>
+</div>
+<div class="bg-white dark:bg-background-dark px-3 py-1 rounded border border-slate-200 dark:border-border-dark flex items-center gap-2 min-w-[300px]">
+<span class="material-symbols-outlined text-xs text-slate-400">lock</span>
+<span class="text-[10px] text-slate-500 font-mono">localhost:5173/dashboard</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-slate-500 cursor-pointer">refresh</span>
+<span class="material-symbols-outlined text-sm text-slate-500 cursor-pointer">open_in_new</span>
+</div>
+</div>
+<div class="flex-1 bg-white dark:bg-slate-900 flex items-center justify-center p-8 relative">
+<div class="w-full max-w-4xl h-full flex flex-col gap-6">
+<div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
+<div class="h-8 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+<div class="flex gap-2">
+<div class="h-8 w-8 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
+<div class="h-8 w-24 bg-primary rounded"></div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-6">
+<div class="h-32 bg-slate-100 dark:bg-slate-800/50 rounded-xl p-4 flex flex-col gap-2">
+<div class="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded"></div>
+<div class="h-8 w-3/4 bg-slate-300 dark:bg-slate-600 rounded"></div>
+</div>
+<div class="h-32 bg-slate-100 dark:bg-slate-800/50 rounded-xl p-4 flex flex-col gap-2">
+<div class="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded"></div>
+<div class="h-8 w-3/4 bg-slate-300 dark:bg-slate-600 rounded"></div>
+</div>
+<div class="h-32 bg-slate-100 dark:bg-slate-800/50 rounded-xl p-4 flex flex-col gap-2">
+<div class="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded"></div>
+<div class="h-8 w-3/4 bg-slate-300 dark:bg-slate-600 rounded"></div>
+</div>
+</div>
+<div class="h-full bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center">
+<p class="text-slate-400 text-sm">Main Content Placeholder</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<aside class="w-[420px] flex flex-col bg-white dark:bg-surface-dark shrink-0">
+<div class="h-12 flex items-center justify-between px-4 border-b border-slate-200 dark:border-border-dark">
+<span class="text-xs font-bold uppercase tracking-widest text-slate-500">AI Assistant</span>
+<div class="flex gap-1">
+<button class="p-1 hover:bg-slate-100 dark:hover:bg-border-dark rounded text-slate-400">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<div class="size-6 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-xs text-white">smart_toy</span>
+</div>
+<span class="text-xs font-bold">OnyxGPT</span>
+<span class="text-[10px] text-slate-400">10:45 AM</span>
+</div>
+<div class="bg-slate-50 dark:bg-background-dark/50 border border-slate-200 dark:border-border-dark p-3 rounded-xl text-sm leading-relaxed prose-chat">
+<p>I've initialized the React + Vite project. Let's start building the e-commerce dashboard.</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 items-end">
+<div class="flex items-center gap-2 flex-row-reverse">
+<div class="size-6 rounded-full bg-slate-200 dark:bg-border-dark flex items-center justify-center">
+<span class="material-symbols-outlined text-xs">person</span>
+</div>
+<span class="text-xs font-bold">You</span>
+<span class="text-[10px] text-slate-400">10:46 AM</span>
+</div>
+<div class="bg-primary text-white p-3 rounded-xl text-sm shadow-lg shadow-primary/10 max-w-[90%]">
+                            Create a dashboard for an e-commerce store with sales charts and a list of recent orders.
+                        </div>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-2">
+<div class="size-6 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-xs text-white">smart_toy</span>
+</div>
+<span class="text-xs font-bold">OnyxGPT</span>
+<span class="text-[10px] text-slate-400">10:47 AM</span>
+</div>
+<div class="bg-slate-50 dark:bg-background-dark/50 border border-slate-200 dark:border-border-dark p-4 rounded-xl text-sm prose-chat">
+<p>I'll start by installing the necessary dependencies for data visualization and creating the main dashboard component.</p>
+<div class="my-4 rounded-lg border border-border-dark overflow-hidden bg-[#0d1117]">
+<div class="bg-slate-200/50 dark:bg-slate-800/80 px-4 py-2 flex items-center justify-between border-b border-border-dark">
+<div class="flex items-center gap-2.5">
+<div class="size-5 rounded flex items-center justify-center bg-emerald-500/20 text-emerald-400">
+<span class="material-symbols-outlined text-base">terminal</span>
+</div>
+<span class="text-[11px] font-bold uppercase tracking-wider text-slate-200">Tool Call: Terminal</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="size-1.5 rounded-full bg-emerald-500"></span>
+<span class="text-[10px] text-slate-500 font-mono">v1.2.0</span>
+</div>
+</div>
+<div class="p-4 bg-code-bg">
+<div class="flex flex-col gap-4">
+<div>
+<div class="text-[10px] text-slate-400 mb-2 font-mono uppercase tracking-widest flex items-center gap-2">
+<span class="w-1 h-3 bg-primary rounded-full"></span>
+                                                Arguments
+                                            </div>
+<div class="rounded-md bg-black/40 border border-white/5 p-3">
+<pre class="!m-0 !p-0 !bg-transparent !border-none"><code class="text-emerald-400 text-xs">npm install recharts lucide-react date-fns</code></pre>
+</div>
+</div>
+<div>
+<div class="text-[10px] text-slate-400 mb-2 font-mono uppercase tracking-widest flex items-center gap-2">
+<span class="w-1 h-3 bg-emerald-500 rounded-full"></span>
+                                                Execution Result
+                                            </div>
+<div class="rounded-md bg-black/60 border border-white/5 p-3 font-mono text-[11px] leading-relaxed shadow-inner">
+<div class="text-slate-400 flex gap-2">
+<span class="text-slate-600 select-none">1</span>
+<span>added 42 packages, and audited 184 packages in 2s</span>
+</div>
+<div class="text-emerald-500 flex gap-2">
+<span class="text-slate-600 select-none">2</span>
+<span>found 0 vulnerabilities</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="my-4 rounded-lg border border-border-dark overflow-hidden bg-[#0d1117]">
+<div class="bg-slate-200/50 dark:bg-slate-800/80 px-4 py-2 flex items-center justify-between border-b border-border-dark">
+<div class="flex items-center gap-2.5">
+<div class="size-5 rounded flex items-center justify-center bg-blue-500/20 text-blue-400">
+<span class="material-symbols-outlined text-base">folder_open</span>
+</div>
+<span class="text-[11px] font-bold uppercase tracking-wider text-slate-200">Tool Call: FileSystem</span>
+</div>
+<div class="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[9px] text-blue-400 font-bold uppercase">
+                                        write_file
+                                    </div>
+</div>
+<div class="p-4 bg-code-bg">
+<div class="text-[10px] text-slate-400 mb-3 font-mono uppercase tracking-widest flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-1 h-3 bg-blue-500 rounded-full"></span>
+                                            File Path
+                                        </div>
+<span class="text-slate-500 lowercase normal-case">src/components/Dashboard.tsx</span>
+</div>
+<div class="rounded-md bg-black/40 border border-white/5 overflow-hidden">
+<div class="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border-b border-white/5">
+<span class="size-2 rounded-full bg-red-400/50"></span>
+<span class="size-2 rounded-full bg-amber-400/50"></span>
+<span class="size-2 rounded-full bg-emerald-400/50"></span>
+</div>
+<pre class="p-3 !m-0 !bg-transparent !border-none leading-relaxed text-slate-300 text-xs"><span class="text-purple-400">import</span> { LineChart, Line } <span class="text-purple-400">from</span> <span class="text-emerald-400">'recharts'</span>;
+<span class="text-purple-400">export const</span> <span class="text-blue-400">Dashboard</span> = () =&gt; {
+  <span class="text-purple-400">return</span> (
+    &lt;<span class="text-red-400">div</span> <span class="text-amber-400">className</span>=<span class="text-emerald-400">"grid gap-4"</span>&gt;
+      &lt;<span class="text-red-400">h1</span>&gt;Sales Overview&lt;/<span class="text-red-400">h1</span>&gt;
+      <span class="text-slate-500">// ... implementation</span>
+    &lt;/<span class="text-red-400">div</span>&gt;
+  );
+};</pre>
+</div>
+</div>
+</div>
+<p>The dashboard structure is now ready. I'm adding the sample data for the charts next.</p>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-border-dark/30 rounded-lg border border-slate-200 dark:border-border-dark">
+<span class="material-symbols-outlined text-sm text-slate-500">rebase</span>
+<span class="text-[10px] font-mono">feat/dashboard-ui</span>
+<span class="text-[10px] text-emerald-500 font-bold ml-auto flex items-center gap-1">
+<span class="size-1.5 rounded-full bg-emerald-500"></span>
+                                Synced
+                            </span>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-slate-200 dark:border-border-dark bg-white dark:bg-surface-dark">
+<div class="relative bg-slate-50 dark:bg-background-dark rounded-xl border border-slate-200 dark:border-border-dark p-2 transition-all focus-within:ring-2 ring-primary/20 focus-within:border-primary">
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-sm resize-none custom-scrollbar min-h-[80px]" placeholder="Ask OnyxGPT to build something..."></textarea>
+<div class="flex items-center justify-between mt-2">
+<div class="flex gap-1">
+<button class="p-1.5 hover:bg-slate-200 dark:hover:bg-border-dark rounded text-slate-500">
+<span class="material-symbols-outlined text-xl">attach_file</span>
+</button>
+<button class="p-1.5 hover:bg-slate-200 dark:hover:bg-border-dark rounded text-slate-500">
+<span class="material-symbols-outlined text-xl">image</span>
+</button>
+</div>
+<button class="bg-primary text-white p-2 rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-xl">send</span>
+</button>
+</div>
+</div>
+<p class="text-[10px] text-center text-slate-400 mt-2">OnyxGPT may generate code that needs review.</p>
+</div>
+</aside>
+</main>
+</div>
+<footer class="h-6 bg-primary dark:bg-primary flex items-center justify-between px-4 text-white text-[10px] font-medium shrink-0 z-20">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">cloud_done</span>
+<span>Synced with Supabase</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">check_circle</span>
+<span>No vulnerabilities</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span>UTF-8</span>
+<span>React v18.2</span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">speed</span>
+<span>Build: 1.2s</span>
+</span>
+</div>
+</footer>
+</div>
+
+</body></html>

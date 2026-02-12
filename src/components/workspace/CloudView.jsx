@@ -67,14 +67,14 @@ export default function CloudView() {
   return (
     <div className="flex h-full bg-background overflow-hidden">
       {/* Sidebar */}
-      <div className="w-44 bg-surface border-r border-gray-800 flex flex-col p-3 space-y-1 shrink-0">
+      <div className="w-44 bg-surface border-r border-onyx-border flex flex-col p-3 space-y-1 shrink-0">
         <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold px-3 mb-2">Puter Cloud</div>
         <SubTabButton active={subTab === 'kv'} onClick={() => setSubTab('kv')} icon={<Database size={14} />} label="KV Store" />
         <SubTabButton active={subTab === 'fs'} onClick={() => setSubTab('fs')} icon={<HardDrive size={14} />} label="Filesystem" />
         <SubTabButton active={subTab === 'workers'} onClick={() => setSubTab('workers')} icon={<Cpu size={14} />} label="Workers" />
         <SubTabButton active={subTab === 'net'} onClick={() => setSubTab('net')} icon={<Network size={14} />} label="Network" />
 
-        <div className="mt-auto pt-4 border-t border-gray-800">
+        <div className="mt-auto pt-4 border-t border-onyx-border">
            <button
             onClick={fetchData}
             className="w-full flex items-center justify-center space-x-2 py-2 text-[10px] text-gray-400 hover:text-primary transition-colors"
@@ -87,7 +87,7 @@ export default function CloudView() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="px-4 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
+        <header className="px-4 py-3 border-b border-onyx-border flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
              <div className="p-1.5 bg-primary/10 rounded text-primary">
                 {subTab === 'kv' && <Database size={14} />}
@@ -122,14 +122,14 @@ export default function CloudView() {
                   <input
                     type="text"
                     placeholder="Key"
-                    className="bg-background border border-gray-700 rounded px-2 py-1 text-xs font-mono focus:border-primary outline-none"
+                    className="bg-background border border-onyx-border rounded px-2 py-1 text-xs font-mono focus:border-primary outline-none"
                     value={newKV.key}
                     onChange={e => setNewKV({...newKV, key: e.target.value})}
                   />
                   <input
                     type="text"
                     placeholder="Value"
-                    className="bg-background border border-gray-700 rounded px-2 py-1 text-xs font-mono focus:border-primary outline-none"
+                    className="bg-background border border-onyx-border rounded px-2 py-1 text-xs font-mono focus:border-primary outline-none"
                     value={newKV.value}
                     onChange={e => setNewKV({...newKV, value: e.target.value})}
                   />
@@ -139,9 +139,9 @@ export default function CloudView() {
                   </div>
                 </div>
               )}
-              <div className="bg-surface rounded-lg border border-gray-800 overflow-hidden">
+              <div className="bg-surface rounded-lg border border-onyx-border overflow-hidden">
                 <table className="w-full text-left table-fixed">
-                  <thead className="bg-background/80 text-gray-500 text-[9px] uppercase font-bold tracking-wider border-b border-gray-800">
+                  <thead className="bg-background/80 text-gray-500 text-[9px] uppercase font-bold tracking-wider border-b border-onyx-border">
                     <tr>
                       <th className="px-4 py-2 w-1/3">Key</th>
                       <th className="px-4 py-2 w-1/2">Value</th>
@@ -174,7 +174,7 @@ export default function CloudView() {
           {subTab === 'fs' && (
             <div className="grid grid-cols-1 gap-2">
               {files.map((file, i) => (
-                <div key={i} className="group p-2 bg-surface border border-gray-800 rounded-lg flex items-center space-x-3 hover:border-primary/50 transition-all">
+                <div key={i} className="group p-2 bg-surface border border-onyx-border rounded-lg flex items-center space-x-3 hover:border-primary/50 transition-all">
                   <div className="p-1.5 bg-background rounded text-gray-500">
                     {file.is_dir ? <Database size={14} /> : <HardDrive size={14} />}
                   </div>
@@ -193,7 +193,7 @@ export default function CloudView() {
           {subTab === 'workers' && (
             <div className="space-y-2">
                {workers.map((worker, i) => (
-                 <div key={i} className="p-3 bg-surface border border-gray-800 rounded-lg flex items-center justify-between">
+                 <div key={i} className="p-3 bg-surface border border-onyx-border rounded-lg flex items-center justify-between">
                     <div className="flex items-center space-x-3 overflow-hidden">
                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
                           <Cpu size={14} />
@@ -211,13 +211,13 @@ export default function CloudView() {
           )}
 
           {subTab === 'net' && (
-            <div className="bg-surface border border-gray-800 rounded-lg p-6 text-center">
+            <div className="bg-surface border border-onyx-border rounded-lg p-6 text-center">
                <Network size={24} className="text-primary mx-auto mb-3 opacity-50" />
                <h3 className="font-display font-bold text-sm mb-1 text-white">Proxy Active</h3>
                <p className="text-gray-400 text-[10px] leading-relaxed mb-4">
                  CORS-free networking enabled via Puter.js
                </p>
-               <div className="inline-flex items-center space-x-2 px-3 py-1 bg-background border border-gray-800 rounded-full text-[9px] font-mono text-primary">
+               <div className="inline-flex items-center space-x-2 px-3 py-1 bg-background border border-onyx-border rounded-full text-[9px] font-mono text-primary">
                   <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
                   <span>Operational</span>
                </div>
