@@ -11,10 +11,17 @@ export function useAuth() {
     try {
       const isSignedIn = await puter.auth.isSignedIn();
       if (isSignedIn) {
-        const [userData, authToken] = await Promise.all([
-          puter.auth.getUser(),
-          puter.auth.getAuthToken()
-        ]);
+        const userData = await puter.auth.getUser();
+
+        let authToken = null;
+        if (typeof puter.auth.getAuthToken === 'function') {
+          authToken = await puter.auth.getAuthToken();
+        } else if (typeof puter.auth.getToken === 'function') {
+          authToken = puter.auth.getToken();
+        } else if (puter.auth.authToken) {
+          authToken = puter.auth.authToken;
+        }
+
         setUser(userData);
         setToken(authToken);
 
@@ -35,17 +42,14 @@ export function useAuth() {
   const handleAuthSuccess = useCallback(async (authToken) => {
     console.log("Onyx: Received auth token from bridge");
     try {
-      // Set token in the local Puter instance
       if (puter.auth.setAuthToken) {
         await puter.auth.setAuthToken(authToken);
       } else if (puter.auth.setToken) {
         await puter.auth.setToken(authToken);
       }
 
-      // Important: Puter.js might need a tick to process the token
       await checkAuth();
 
-      // If we now have a user, reload to ensure all singleton services are re-initialized
       const finalCheck = await puter.auth.isSignedIn();
       if (finalCheck) {
          console.log("Onyx: Authentication confirmed. Reloading...");
@@ -59,7 +63,6 @@ export function useAuth() {
   useEffect(() => {
     checkAuth();
 
-    // 1. BroadcastChannel (Modern)
     const authChannel = new BroadcastChannel('puter_auth');
     authChannel.onmessage = (event) => {
       if (event.data.type === 'AUTH_SUCCESS') {
@@ -67,7 +70,6 @@ export function useAuth() {
       }
     };
 
-    // 2. Storage Events (Fallback for across-tab reliability)
     const handleStorage = (e) => {
       if (e.key === 'puter_auth_sync' && e.newValue) {
         try {
@@ -83,8 +85,7 @@ export function useAuth() {
     };
     window.addEventListener('storage', handleStorage);
 
-    // Regular polling for auth changes (fallback for cross-origin redirects)
-    const pollInterval = setInterval(checkAuth, 10000);
+    const pollInterval = setInterval(checkAuth, 15000);
 
     return () => {
       authChannel.close();
@@ -99,7 +100,6 @@ export function useAuth() {
     const left = (window.innerWidth - width) / 2;
     const top = (window.innerHeight - height) / 2;
 
-    // Open our non-isolated bridge window
     window.open(
       '/auth-bridge.html',
       'PuterAuthBridge',
@@ -113,7 +113,6 @@ export function useAuth() {
       setUser(null);
       setToken(null);
       listenersRef.current.forEach(cb => cb(null));
-      // Refresh to ensure all persistent state is cleared
       window.location.reload();
     } catch (err) {
       console.error('Onyx: Sign out failed:', err);
