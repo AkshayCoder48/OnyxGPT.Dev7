@@ -18,7 +18,6 @@ export function useAuth() {
         setUser(userData);
         setToken(authToken);
 
-        // Notify listeners
         const state = { user: userData, token: authToken };
         listenersRef.current.forEach(cb => cb(state));
       } else {
@@ -27,51 +26,61 @@ export function useAuth() {
         listenersRef.current.forEach(cb => cb(null));
       }
     } catch (err) {
-      console.error('Auth check failed:', err);
+      console.error('Onyx: Auth check failed:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const handleAuthSuccess = useCallback(async (authToken) => {
+    console.log("Onyx: Auth success signal received");
+    if (puter.auth.setAuthToken) {
+      await puter.auth.setAuthToken(authToken);
+    } else if (puter.auth.setToken) {
+      await puter.auth.setToken(authToken);
+    }
+    await checkAuth();
+    // Use a small delay before reload to ensure state is persisted in Puter's internal storage
+    setTimeout(() => window.location.reload(), 500);
+  }, [checkAuth]);
+
   useEffect(() => {
     checkAuth();
 
-    // Set up BroadcastChannel to listen for auth from the bridge
+    // 1. BroadcastChannel
     const authChannel = new BroadcastChannel('puter_auth');
-
-    authChannel.onmessage = async (event) => {
+    authChannel.onmessage = (event) => {
       if (event.data.type === 'AUTH_SUCCESS') {
-        console.log("Onyx: Auth successful from bridge");
-
-        // Try all possible ways to set the token in Puter.js
-        if (puter.auth.setAuthToken) {
-          await puter.auth.setAuthToken(event.data.token);
-        }
-        if (puter.auth.setToken) {
-          await puter.auth.setToken(event.data.token);
-        }
-
-        // Update local state
-        await checkAuth();
-
-        // Force reload to ensure all services are initialized with the new token
-        window.location.reload();
-      } else if (event.data.type === 'AUTH_ERROR') {
-        console.error("Onyx: Auth failed from bridge", event.data.error);
+        handleAuthSuccess(event.data.token);
       }
     };
 
-    // Poll for auth changes as a fallback
-    const pollInterval = setInterval(checkAuth, 10000);
+    // 2. Storage Event (Fallback)
+    const handleStorage = (e) => {
+      if (e.key === 'puter_auth_result' && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          if (data.type === 'AUTH_SUCCESS') {
+            handleAuthSuccess(data.token);
+            localStorage.removeItem('puter_auth_result');
+          }
+        } catch (err) {
+          console.error("Onyx: Failed to parse auth result from storage", err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    const pollInterval = setInterval(checkAuth, 15000);
 
     return () => {
       authChannel.close();
+      window.removeEventListener('storage', handleStorage);
       clearInterval(pollInterval);
     };
-  }, [checkAuth]);
+  }, [checkAuth, handleAuthSuccess]);
 
   const signIn = useCallback(() => {
-    // Open the bridge file in a new window/popup.
     const width = 600;
     const height = 700;
     const left = (window.innerWidth - width) / 2;
@@ -90,9 +99,9 @@ export function useAuth() {
       setUser(null);
       setToken(null);
       listenersRef.current.forEach(cb => cb(null));
-      window.location.reload(); // Refresh to clear all sensitive states
+      window.location.reload();
     } catch (err) {
-      console.error('Sign out failed:', err);
+      console.error('Onyx: Sign out failed:', err);
     }
   }, []);
 
