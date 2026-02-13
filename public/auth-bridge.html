@@ -5,39 +5,38 @@
 </head>
 <body>
     <div id="status" style="font-family: sans-serif; text-align: center; margin-top: 50px;">
-        <p>Authenticating with Puter...</p>
+        <p>Connecting to Puter...</p>
     </div>
-    <script src="https://js.puter.com"></script>
+    <script src="https://js.puter.com/v2/"></script>
     <script>
         const channel = new BroadcastChannel('puter_auth');
         const statusDiv = document.getElementById('status');
 
         async function handleSignIn() {
+            if (typeof puter === 'undefined') {
+                console.error("Puter script not loaded yet");
+                statusDiv.innerHTML = '<p style="color: orange;">Initializing Puter SDK...</p>';
+                setTimeout(handleSignIn, 500);
+                return;
+            }
+
             try {
                 const isSignedIn = await puter.auth.isSignedIn();
                 if (isSignedIn) {
                     statusDiv.innerHTML = '<p style="color: green;">Authenticated! Transferring session...</p>';
                     const token = await puter.auth.getAuthToken();
                     channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
-
-                    // Also try the suggested 'getToken' if getAuthToken is null
-                    if (!token) {
-                        const tokenFallback = puter.auth.getToken ? puter.auth.getToken() : null;
-                        if (tokenFallback) {
-                            channel.postMessage({ type: 'AUTH_SUCCESS', token: tokenFallback });
-                        }
-                    }
-
                     setTimeout(() => window.close(), 1000);
                 } else {
-                    // This might redirect the page
+                    statusDiv.innerHTML = '<p>Opening sign-in popup...</p>';
                     await puter.auth.signIn();
 
-                    // If it returned from redirect and we are here, check again
+                    // After sign-in, check again
                     const signedInNow = await puter.auth.isSignedIn();
                     if (signedInNow) {
                         const token = await puter.auth.getAuthToken();
                         channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
+                        statusDiv.innerHTML = '<p style="color: green;">Success! Closing window...</p>';
                         setTimeout(() => window.close(), 1000);
                     }
                 }
@@ -48,7 +47,8 @@
             }
         }
 
-        handleSignIn();
+        // Wait for window load to ensure all scripts are executed
+        window.onload = handleSignIn;
     </script>
 </body>
 </html>
