@@ -4,29 +4,50 @@
     <title>Puter Auth Bridge</title>
 </head>
 <body>
-    <p>Authenticating with Puter...</p>
-    <script src="https://js.puter.com/v2/"></script>
+    <div id="status" style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+        <p>Authenticating with Puter...</p>
+    </div>
+    <script src="https://js.puter.com"></script>
     <script>
         const channel = new BroadcastChannel('puter_auth');
+        const statusDiv = document.getElementById('status');
 
         async function handleSignIn() {
             try {
-                // This popup is opened from your domain, so it can see this script
-                const result = await puter.auth.signIn();
-                // In v2, getToken might be different, but let's check puter.js docs or common patterns
-                // Actually user suggested puter.auth.getToken()
-                const token = await puter.auth.getAuthToken();
+                const isSignedIn = await puter.auth.isSignedIn();
+                if (isSignedIn) {
+                    statusDiv.innerHTML = '<p style="color: green;">Authenticated! Transferring session...</p>';
+                    const token = await puter.auth.getAuthToken();
+                    channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
 
-                // Send token to the main application
-                channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
+                    // Also try the suggested 'getToken' if getAuthToken is null
+                    if (!token) {
+                        const tokenFallback = puter.auth.getToken ? puter.auth.getToken() : null;
+                        if (tokenFallback) {
+                            channel.postMessage({ type: 'AUTH_SUCCESS', token: tokenFallback });
+                        }
+                    }
 
-                // Close this bridge window
-                setTimeout(() => window.close(), 500);
+                    setTimeout(() => window.close(), 1000);
+                } else {
+                    // This might redirect the page
+                    await puter.auth.signIn();
+
+                    // If it returned from redirect and we are here, check again
+                    const signedInNow = await puter.auth.isSignedIn();
+                    if (signedInNow) {
+                        const token = await puter.auth.getAuthToken();
+                        channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
+                        setTimeout(() => window.close(), 1000);
+                    }
+                }
             } catch (err) {
+                console.error("Auth Bridge Error:", err);
+                statusDiv.innerHTML = '<p style="color: red;">Error: ' + err.message + '</p>';
                 channel.postMessage({ type: 'AUTH_ERROR', error: err.message });
-                setTimeout(() => window.close(), 500);
             }
         }
+
         handleSignIn();
     </script>
 </body>

@@ -42,13 +42,20 @@ export function useAuth() {
     authChannel.onmessage = async (event) => {
       if (event.data.type === 'AUTH_SUCCESS') {
         console.log("Onyx: Auth successful from bridge");
-        // Manually set token in the main app's puter instance
+
+        // Try all possible ways to set the token in Puter.js
         if (puter.auth.setAuthToken) {
           await puter.auth.setAuthToken(event.data.token);
-        } else if (puter.auth.setToken) {
-           await puter.auth.setToken(event.data.token);
         }
+        if (puter.auth.setToken) {
+          await puter.auth.setToken(event.data.token);
+        }
+
+        // Update local state
         await checkAuth();
+
+        // Force reload to ensure all services are initialized with the new token
+        window.location.reload();
       } else if (event.data.type === 'AUTH_ERROR') {
         console.error("Onyx: Auth failed from bridge", event.data.error);
       }
@@ -65,8 +72,6 @@ export function useAuth() {
 
   const signIn = useCallback(() => {
     // Open the bridge file in a new window/popup.
-    // This window will NOT be able to talk to 'window.opener' due to COOP,
-    // but BroadcastChannel works across windows on the same origin.
     const width = 600;
     const height = 700;
     const left = (window.innerWidth - width) / 2;
@@ -85,6 +90,7 @@ export function useAuth() {
       setUser(null);
       setToken(null);
       listenersRef.current.forEach(cb => cb(null));
+      window.location.reload(); // Refresh to clear all sensitive states
     } catch (err) {
       console.error('Sign out failed:', err);
     }
