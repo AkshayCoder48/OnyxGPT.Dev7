@@ -7,79 +7,75 @@
         .card { background: #131316; padding: 2rem; border-radius: 1rem; border: 1px solid #1e1e22; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 350px; width: 100%; }
         .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #00E4CC; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 1.5rem; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .status { margin-bottom: 1.5rem; font-size: 1.1rem; font-weight: 500; }
+        .status { margin-bottom: 0.5rem; font-size: 1.1rem; font-weight: 500; }
         .info { font-size: 0.85rem; color: #64748b; line-height: 1.4; }
-        button { background: #00E4CC; color: #0c0c0e; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: bold; cursor: pointer; margin-top: 1rem; transition: transform 0.2s; }
-        button:hover { transform: scale(1.05); }
+        button { background: #00E4CC; color: #0c0c0e; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: bold; cursor: pointer; margin-top: 1.5rem; }
     </style>
 </head>
 <body>
     <div class="card">
         <div id="loader" class="spinner"></div>
-        <div id="status" class="status">Connecting to Puter...</div>
-        <div id="info" class="info">This window handles authentication for OnyxGPT securely.</div>
-        <button id="retryBtn" style="display: none;" onclick="location.reload()">Retry Connection</button>
+        <div id="status" class="status">Initializing...</div>
+        <div id="info" class="info">Please wait while we connect to Puter.</div>
+        <button id="manualBtn" style="display: none;" onclick="triggerSignIn()">Sign In with Puter</button>
     </div>
 
+    <!-- Load Puter script as early as possible -->
     <script src="https://js.puter.com/v2/"></script>
     <script>
         const channel = new BroadcastChannel('puter_auth');
         const statusDiv = document.getElementById('status');
         const loader = document.getElementById('loader');
-        const retryBtn = document.getElementById('retryBtn');
+        const manualBtn = document.getElementById('manualBtn');
 
-        async function handleSignIn() {
+        async function triggerSignIn() {
+            try {
+                statusDiv.innerText = "Opening Puter...";
+                // signIn() typically triggers the redirect or popup
+                await puter.auth.signIn();
+
+                // If it returns, check if we are signed in
+                if (await puter.auth.isSignedIn()) {
+                    const token = await puter.auth.getAuthToken();
+                    channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
+                    localStorage.setItem('puter_auth_sync', JSON.stringify({ type: 'AUTH_SUCCESS', token: token, ts: Date.now() }));
+                    statusDiv.innerHTML = '<span style="color: #00E4CC;">✓ Success</span>';
+                    loader.style.display = 'none';
+                    setTimeout(() => window.close(), 1000);
+                }
+            } catch (err) {
+                console.error("Auth Bridge Error:", err);
+                statusDiv.innerText = "Error: " + err.message;
+                manualBtn.style.display = 'inline-block';
+            }
+        }
+
+        async function init() {
             if (typeof puter === 'undefined') {
-                statusDiv.innerText = "SDK Initialization failed.";
-                loader.style.display = 'none';
-                retryBtn.style.display = 'inline-block';
+                setTimeout(init, 50);
                 return;
             }
 
             try {
-                const isSignedIn = await puter.auth.isSignedIn();
-                if (isSignedIn) {
-                    statusDiv.innerHTML = '<span style="color: #00E4CC;">✓ Authenticated</span>';
+                if (await puter.auth.isSignedIn()) {
                     const token = await puter.auth.getAuthToken();
-
-                    // Broadcast success
                     channel.postMessage({ type: 'AUTH_SUCCESS', token: token });
-
-                    // Fallback to localStorage for maximum reliability
-                    localStorage.setItem('puter_auth_sync', JSON.stringify({
-                        type: 'AUTH_SUCCESS',
-                        token: token,
-                        ts: Date.now()
-                    }));
-
+                    localStorage.setItem('puter_auth_sync', JSON.stringify({ type: 'AUTH_SUCCESS', token: token, ts: Date.now() }));
+                    statusDiv.innerHTML = '<span style="color: #00E4CC;">✓ Synchronized</span>';
                     loader.style.display = 'none';
-                    setTimeout(() => window.close(), 1500);
+                    setTimeout(() => window.close(), 500);
                 } else {
-                    statusDiv.innerText = "Redirecting to Puter...";
-                    // Using signIn() which will either open a popup (if bridge is not isolated)
-                    // or redirect the current bridge window.
-                    await puter.auth.signIn();
-
-                    // If it returns from a popup or check
-                    const checkFinal = await puter.auth.isSignedIn();
-                    if (checkFinal) {
-                        handleSignIn();
-                    }
+                    // Try to trigger instantly
+                    triggerSignIn();
                 }
             } catch (err) {
-                console.error("Auth Bridge Error:", err);
-                statusDiv.innerHTML = '<span style="color: #ff4444;">Login Error</span>';
-                document.getElementById('info').innerText = err.message;
-                loader.style.display = 'none';
-                retryBtn.style.display = 'inline-block';
-                channel.postMessage({ type: 'AUTH_ERROR', error: err.message });
+                statusDiv.innerText = "Initialization failed.";
+                manualBtn.style.display = 'inline-block';
             }
         }
 
-        // Use a short delay to ensure Puter SDK is fully ready
-        window.onload = () => {
-            setTimeout(handleSignIn, 500);
-        };
+        // Run instantly
+        init();
     </script>
 </body>
 </html>

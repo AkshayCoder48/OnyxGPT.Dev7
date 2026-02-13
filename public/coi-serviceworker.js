@@ -8,6 +8,11 @@ if (typeof window === 'undefined') {
             return;
         }
 
+        // EXCLUDE auth-bridge.html from COOP/COEP headers
+        if (event.request.url.includes("auth-bridge.html")) {
+            return;
+        }
+
         event.respondWith(
             fetch(event.request).then((response) => {
                 if (response.status === 0) {
@@ -28,23 +33,16 @@ if (typeof window === 'undefined') {
     });
 } else {
     (() => {
-        const script = document.currentScript;
-        const coepCustomHeader = script.getAttribute("coep") || "credentialless";
-        const coopCustomHeader = script.getAttribute("coop") || "same-origin";
 
         if (window.crossOriginIsolated) return;
 
         if (window.isSecureContext && !!window.navigator.serviceWorker) {
             window.navigator.serviceWorker.register(window.document.currentScript.src).then((registration) => {
-                console.log("COI Service Worker registered", registration.scope);
-
                 registration.addEventListener("updatefound", () => {
-                    console.log("Reloading page to enable COI");
                     window.location.reload();
                 });
 
                 if (registration.active && !window.navigator.serviceWorker.controller) {
-                    console.log("Reloading page to enable COI");
                     window.location.reload();
                 }
             }, (err) => {
