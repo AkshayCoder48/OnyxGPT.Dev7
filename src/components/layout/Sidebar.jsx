@@ -9,6 +9,7 @@ import {
   Github,
   Beaker
 } from 'lucide-react';
+import FileExplorer from '../workspace/FileExplorer';
 
 export default function Sidebar({
   activeTab,
@@ -37,16 +38,16 @@ export default function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-2">
+      <nav className="flex-1 px-4 space-y-2 flex flex-col overflow-hidden">
         <button
           onClick={onBack}
-          className="w-full flex items-center space-x-3 px-4 py-3 text-gray-500 hover:text-white transition-all rounded-xl hover:bg-white/5 mb-6"
+          className="w-full flex items-center space-x-3 px-4 py-3 text-gray-500 hover:text-white transition-all rounded-xl hover:bg-white/5 mb-4 shrink-0"
         >
           <ChevronLeft size={18} />
           <span className="text-sm font-medium">Back to Projects</span>
         </button>
 
-        <div className="space-y-1">
+        <div className="space-y-1 shrink-0">
           {menuItems.map((item) => (
             <button
               key={item.id}
@@ -60,14 +61,19 @@ export default function Sidebar({
               <div className={`transition-colors ${activeTab === item.id ? 'text-primary' : 'group-hover:text-gray-300'}`}>
                 {item.icon}
               </div>
-              <span className="text-sm font-bold tracking-tight uppercase tracking-widest text-[11px]">{item.label}</span>
+              <span className="text-sm font-bold tracking-tight uppercase text-[11px] tracking-widest">{item.label}</span>
             </button>
           ))}
+        </div>
+
+        {/* File Explorer Section */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <FileExplorer />
         </div>
       </nav>
 
       {/* Footer / User */}
-      <div className="p-4 mt-auto space-y-4">
+      <div className="p-4 mt-auto space-y-4 shrink-0">
          <button className="w-full bg-background border border-onyx-border hover:border-primary/50 transition-all px-4 py-4 rounded-2xl flex items-center justify-center space-x-3 group">
             <Github size={18} className="text-gray-500 group-hover:text-white transition-colors" />
             <span className="text-sm font-bold text-gray-400 group-hover:text-white transition-colors">Deploy to GitHub</span>

@@ -38,12 +38,7 @@ export async function getClient() {
   let sbId = sessionStorage.getItem('csb_sandbox_id');
 
   if (!sbId) {
-    if (!apiToken) {
-       // For preview only, we might not need a key if we have a public sandbox ID
-       // but for building, we need one.
-       // We'll return null or throw if we need to write.
-       return null;
-    }
+    if (!apiToken) return null;
     sbId = await createSandboxViaAPI(apiToken);
     sessionStorage.setItem('csb_sandbox_id', sbId);
   }
@@ -78,10 +73,22 @@ export async function readFile(path) {
   return await c.fs.readTextFile(path);
 }
 
+export async function listFiles(path = "/") {
+  const c = await getClient();
+  if (!c) return [];
+  // The SDK fs.readdir returns an array of entries
+  try {
+    const entries = await c.fs.readdir(path);
+    return entries; // [{ name, type, ... }]
+  } catch (err) {
+    console.error("Failed to list files:", err);
+    return [];
+  }
+}
+
 export async function getPreview(port = 5173) {
   const sbId = sessionStorage.getItem('csb_sandbox_id');
   if (!sbId) return null;
-  // Previews can be accessed via URL without full SDK client if public
   return `https://${sbId}.${port}.csb.app`;
 }
 
