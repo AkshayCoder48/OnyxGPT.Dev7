@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Brain, Zap, Bug, RotateCcw, Paperclip, Clock, Check, AlertCircle, Cpu, FileJson, FileCode, FileText, Globe, Box, Terminal } from 'lucide-react';
+import {
+  Send,
+  Brain,
+  Zap,
+  Bug,
+  RotateCcw,
+  Paperclip,
+  Clock,
+  Check,
+  AlertCircle,
+  Cpu,
+  FileJson,
+  FileCode,
+  FileText,
+  Globe,
+  Box,
+  Terminal
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -52,14 +69,14 @@ export default function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[90%] group ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-              <div className={`inline-block p-3 rounded-2xl text-sm leading-relaxed ${
+              <div className={`inline-block p-4 rounded-[1.5rem] text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-primary text-background font-medium shadow-[0_4px_12px_rgba(0,228,204,0.2)] rounded-tr-none'
-                  : 'bg-background border border-onyx-border text-gray-200 rounded-tl-none prose prose-invert prose-sm max-w-none'
+                  ? 'bg-primary text-background font-bold shadow-[0_10px_25px_rgba(0,228,204,0.2)] rounded-tr-none'
+                  : 'bg-background border border-onyx-border text-gray-200 rounded-tl-none prose prose-invert prose-sm max-w-none shadow-xl'
               }`}>
                 {msg.role === 'user' ? (
                   <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -67,7 +84,6 @@ export default function ChatPanel({
                   renderAssistantContent(msg)
                 )}
               </div>
-
             </div>
           </div>
         ))}
@@ -143,8 +159,6 @@ function getToolIcon(name) {
     case 'readFile': return <FileText size={16} />;
     case 'listFiles': return <Box size={16} />;
     case 'deploy': return <Globe size={16} />;
-    case 'kvSet':
-    case 'fsWrite': return <FileJson size={16} />;
     default: return <Cpu size={16} />;
   }
 }
@@ -171,14 +185,14 @@ function renderAssistantContent(msg) {
             remarkPlugins={[remarkGfm]}
             components={{
               p: ({children}) => <p className="mb-2 last:mb-0 leading-normal">{children}</p>,
-              pre: ({children}) => <pre className="bg-black/30 p-2 rounded-lg my-2 overflow-x-auto border border-white/5">{children}</pre>,
-              code: ({node, inline, className, children, ...props}) => (
-                <code className={`${className} ${inline ? 'bg-white/10 px-1 rounded' : 'block text-xs font-mono'}`} {...props}>
+              pre: ({children}) => <pre className="bg-black/40 p-3 rounded-xl my-3 overflow-x-auto border border-white/5 font-mono text-xs">{children}</pre>,
+              code: ({inline, className, children, ...props}) => (
+                <code className={`${className} ${inline ? 'bg-white/10 px-1.5 py-0.5 rounded text-primary' : 'block'}`} {...props}>
                   {children}
                 </code>
               ),
-              ul: ({children}) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
-              ol: ({children}) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+              ul: ({children}) => <ul className="list-disc ml-4 mb-2 space-y-1">{children}</ul>,
+              ol: ({children}) => <ol className="list-decimal ml-4 mb-2 space-y-1">{children}</ol>,
             }}
           >
             {part}
@@ -186,7 +200,6 @@ function renderAssistantContent(msg) {
         );
       })}
 
-      {/* Render any tool calls that weren't matched in content (backup) */}
       {msg.toolCalls?.filter(tc => !msg.content.includes(`[TOOL_CALL:${tc.id}]`)).map((tc, i) => (
         <ToolCallBlock key={`extra-${i}`} tc={tc} />
       ))}
@@ -195,41 +208,50 @@ function renderAssistantContent(msg) {
 }
 
 function ToolCallBlock({ tc }) {
+  const getLabel = (name) => {
+    switch(name) {
+      case 'writeFile': return 'Updating File';
+      case 'runCommand': return 'Executing Command';
+      case 'readFile': return 'Analyzing Source';
+      default: return 'Processing';
+    }
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 my-4">
-      <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+      <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
         tc.status === 'error'
           ? 'bg-red-500/5 border-red-500/20 text-red-400'
           : tc.status === 'success'
-            ? 'bg-primary/5 border-primary/20 text-primary shadow-[0_0_15px_rgba(0,228,204,0.05)]'
+            ? 'bg-primary/5 border-primary/20 text-primary shadow-[0_0_20px_rgba(0,228,204,0.05)]'
             : 'bg-white/5 border-white/10 text-gray-400'
       }`}>
-        <div className="flex items-center space-x-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+        <div className="flex items-center space-x-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
              tc.status === 'success' ? 'bg-primary/20' : 'bg-white/5'
           }`}>
             {getToolIcon(tc.name)}
           </div>
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider">
-              {tc.name === 'writeFile' ? 'Publishing File' :
-               tc.name === 'runCommand' ? 'Executing Task' :
-               tc.name === 'readFile' ? 'Analyzing Source' : 'Processing'}
+          <div className="overflow-hidden">
+            <div className="text-[11px] font-bold uppercase tracking-widest mb-0.5">
+              {getLabel(tc.name)}
             </div>
-            <div className="text-[10px] opacity-60 font-mono truncate max-w-[200px]">
-              {tc.input?.path || (tc.input?.command ? `${tc.input.command} ${tc.input.args?.join(' ')}` : tc.name)}
+            <div className="text-[10px] opacity-60 font-mono truncate max-w-[180px]">
+              {tc.input?.path || tc.input?.command || tc.name}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center ml-4">
           {tc.status === 'running' ? (
             <div className="flex items-center space-x-2">
                <span className="text-[9px] font-bold animate-pulse">RUNNING</span>
-               <Zap size={12} className="animate-pulse" />
+               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></div>
             </div>
           ) : tc.status === 'success' ? (
-            <Check size={14} className="text-primary" />
+            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+              <Check size={14} className="text-primary" />
+            </div>
           ) : (
             <AlertCircle size={14} className="text-red-400" />
           )}
@@ -243,9 +265,9 @@ function ModeButton({ active, onClick, icon, label, activeColor }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${
+      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${
         active
-          ? `${activeColor} text-white border-transparent shadow-lg`
+          ? `${activeColor} text-white border-transparent shadow-lg shadow-${activeColor.split('-')[1]}-500/20`
           : 'bg-background text-gray-500 border-onyx-border hover:text-gray-300'
       }`}
     >
@@ -260,7 +282,7 @@ function IconButton({ icon, onClick, title }) {
     <button
       onClick={onClick}
       title={title}
-      className="p-1.5 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+      className="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
     >
       {icon}
     </button>
