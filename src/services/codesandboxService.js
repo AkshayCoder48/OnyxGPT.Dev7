@@ -157,7 +157,7 @@ export async function listFiles(path = "/") {
   }
 }
 
-export async function getPreview(port = 5173) {
+export async function getPreviewUrl(port = 5173) {
   const sbId = sessionStorage.getItem(`csb_sandbox_id_${currentProjectId}`);
   if (!sbId) return null;
   // Fallback to direct URL if client not ready

@@ -1,28 +1,30 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// https://vitejs.dev/config/
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
   plugins: [
+    {
+      name: 'resolve-module-polyfill',
+      enforce: 'pre',
+      resolveId(id) {
+        if (id === 'module' || id === 'node:module') {
+          return path.resolve(__dirname, './src/module-polyfill.js');
+        }
+      },
+    },
     react(),
     nodePolyfills({
-      // Provide necessary polyfills for the CodeSandbox SDK
+      include: ['buffer', 'process', 'util', 'stream', 'events', 'path', 'fs'],
       globals: {
         Buffer: true,
         global: true,
         process: true,
       },
-      protocolImports: true,
     }),
   ],
-  resolve: {
-    alias: {
-      // Some versions of the SDK may require explicit module aliasing in the browser
-      'module': 'node-stdlib-browser/esm/mock/empty.js',
-    }
-  },
-  optimizeDeps: {
-    include: ['@codesandbox/sdk', 'codesandbox'],
-  }
 });
