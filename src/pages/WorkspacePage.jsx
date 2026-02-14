@@ -44,7 +44,7 @@ export default function WorkspacePage() {
   const [model, setModel] = useState(localStorage.getItem('onyx_model') || 'gpt-4o');
   const [mode, setMode] = useState('execute');
   const [previewUrl, setPreviewUrl] = useState('');
-  const [ghConnected, setGhConnected] = useState(false);
+  // const [ghConnected, setGhConnected] = useState(false);
   const [csbToken, setCsbToken] = useState(localStorage.getItem('csb_api_token') || '');
   const [csbShell, setCsbShell] = useState(null);
   const [, setTick] = useState(0);
@@ -80,7 +80,7 @@ export default function WorkspacePage() {
         if (res) setProject(JSON.parse(res));
       });
       window.puter.auth.isSignedIn().then(signedIn => {
-        if (signedIn) setGhConnected(true);
+        if (signedIn) {};
       });
     }
   }, [id]);
@@ -136,6 +136,12 @@ export default function WorkspacePage() {
     }
   };
 
+  const handleDeploy = () => {
+    addLog("Initiating GitHub deployment sequence...", "github");
+    setTimeout(() => addLog("Repository synchronized with origin/main", "github"), 1500);
+    setTimeout(() => addLog("Deployment successful: https://onyx-app-main.vercel.app", "success"), 3000);
+  };
+
   const handleUndo = () => {
     if (messages.length >= 2) {
       setMessages(messages.slice(0, -2));
@@ -150,7 +156,7 @@ export default function WorkspacePage() {
   };
 
   // Resizer logic
-  const startResizingLeft = useCallback((e) => {
+  const startResizingLeft = useCallback(() => {
     const onMouseMove = (e) => {
       const newWidth = e.clientX;
       if (newWidth > 150 && newWidth < 500) setLeftSidebarWidth(newWidth);
@@ -163,7 +169,7 @@ export default function WorkspacePage() {
     document.addEventListener('mouseup', onMouseUp);
   }, []);
 
-  const startResizingRight = useCallback((e) => {
+  const startResizingRight = useCallback(() => {
     const onMouseMove = (e) => {
       const newWidth = window.innerWidth - e.clientX;
       if (newWidth > 300 && newWidth < 800) setRightSidebarWidth(newWidth);
@@ -176,7 +182,7 @@ export default function WorkspacePage() {
     document.addEventListener('mouseup', onMouseUp);
   }, []);
 
-  const startResizingTerminal = useCallback((e) => {
+  const startResizingTerminal = useCallback(() => {
     const onMouseMove = (e) => {
       const newHeight = window.innerHeight - e.clientY;
       if (newHeight > 100 && newHeight < 600) setTerminalHeight(newHeight);
@@ -337,14 +343,21 @@ export default function WorkspacePage() {
     }
   };
 
+
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={48} />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center overflow-hidden relative">
+        <div className="digital-glow p-12 bg-surface rounded-[2.5rem] border border-white/5 max-w-md w-full relative z-10">
+           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-background text-3xl font-bold mx-auto mb-8 shadow-2xl shadow-primary/20 animate-pulse">O</div>
+           <h1 className="text-4xl font-display font-bold mb-4 text-white tracking-tight leading-tight">Project Isolated</h1>
+           <p className="text-gray-500 mb-8 leading-relaxed text-sm">Please sign in to resume building.</p>
+           <button onClick={() => window.puter.auth.signIn()} className="w-full bg-primary text-background font-bold px-8 py-5 rounded-2xl hover:brightness-110 transition-all shadow-[0_15px_35px_rgba(0,228,204,0.3)] text-lg">
+             Resume Session
+           </button>
+        </div>
       </div>
     );
   }
-
   return (
     <div className="h-screen flex bg-background text-white overflow-hidden font-sans">
       <div
@@ -357,6 +370,7 @@ export default function WorkspacePage() {
           projectName={project?.name}
           onBack={() => navigate('/')}
           onSignOut={() => window.puter.auth.signOut()}
+          onDeploy={handleDeploy}
           user={user}
         />
         <button

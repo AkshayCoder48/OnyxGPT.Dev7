@@ -14,9 +14,10 @@ import FileExplorer from '../workspace/FileExplorer';
 export default function Sidebar({
   activeTab,
   setActiveTab,
-  projectName,
+
   onBack,
   onSignOut,
+  onDeploy,
   user
 }) {
   const menuItems = [
@@ -74,7 +75,10 @@ export default function Sidebar({
 
       {/* Footer / User */}
       <div className="p-4 mt-auto space-y-4 shrink-0">
-         <button className="w-full bg-background border border-onyx-border hover:border-primary/50 transition-all px-4 py-4 rounded-2xl flex items-center justify-center space-x-3 group">
+         <button
+           onClick={onDeploy}
+           className="w-full bg-background border border-onyx-border hover:border-primary/50 transition-all px-4 py-4 rounded-2xl flex items-center justify-center space-x-3 group"
+         >
             <Github size={18} className="text-gray-500 group-hover:text-white transition-colors" />
             <span className="text-sm font-bold text-gray-400 group-hover:text-white transition-colors">Deploy to GitHub</span>
          </button>
