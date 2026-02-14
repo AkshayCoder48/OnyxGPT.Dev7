@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Terminal as TerminalIcon,
@@ -31,10 +31,9 @@ import OnyxTerminal from '../components/workspace/OnyxTerminal';
 import { chatWithAI } from '../services/aiService';
 import * as csb from '../services/codesandboxService';
 
-export default function WorkspacePage() {
+export default function WorkspacePage({ user: authUser, signIn, signOut }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [project, setProject] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [messages, setMessages] = useState([]);
@@ -44,7 +43,6 @@ export default function WorkspacePage() {
   const [model, setModel] = useState(localStorage.getItem('onyx_model') || 'gpt-4o');
   const [mode, setMode] = useState('execute');
   const [previewUrl, setPreviewUrl] = useState('');
-  // const [ghConnected, setGhConnected] = useState(false);
   const [csbToken, setCsbToken] = useState(localStorage.getItem('csb_api_token') || '');
   const [csbShell, setCsbShell] = useState(null);
   const [, setTick] = useState(0);
@@ -75,12 +73,8 @@ export default function WorkspacePage() {
 
   useEffect(() => {
     if (window.puter) {
-      window.puter.auth.getUser().then(setUser);
       window.puter.kv.get(`project_${id}`).then(res => {
         if (res) setProject(JSON.parse(res));
-      });
-      window.puter.auth.isSignedIn().then(signedIn => {
-        if (signedIn) {};
       });
     }
   }, [id]);
@@ -136,16 +130,16 @@ export default function WorkspacePage() {
     }
   };
 
-  const handleDeploy = () => {
-    addLog("Initiating GitHub deployment sequence...", "github");
-    setTimeout(() => addLog("Repository synchronized with origin/main", "github"), 1500);
-    setTimeout(() => addLog("Deployment successful: https://onyx-app-main.vercel.app", "success"), 3000);
-  };
-
   const handleUndo = () => {
     if (messages.length >= 2) {
       setMessages(messages.slice(0, -2));
     }
+  };
+
+  const handleDeploy = () => {
+    addLog("Initiating GitHub deployment sequence...", "github");
+    setTimeout(() => addLog("Repository synchronized with origin/main", "github"), 1500);
+    setTimeout(() => addLog("Deployment successful: https://onyx-app-main.vercel.app", "success"), 3000);
   };
 
   const handleSaveCsbToken = (e) => {
@@ -343,21 +337,24 @@ export default function WorkspacePage() {
     }
   };
 
-
-  if (!user) {
+  if (!authUser) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center overflow-hidden relative">
         <div className="digital-glow p-12 bg-surface rounded-[2.5rem] border border-white/5 max-w-md w-full relative z-10">
            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-background text-3xl font-bold mx-auto mb-8 shadow-2xl shadow-primary/20 animate-pulse">O</div>
            <h1 className="text-4xl font-display font-bold mb-4 text-white tracking-tight leading-tight">Project Isolated</h1>
            <p className="text-gray-500 mb-8 leading-relaxed text-sm">Please sign in to resume building.</p>
-           <button onClick={() => window.puter.auth.signIn()} className="w-full bg-primary text-background font-bold px-8 py-5 rounded-2xl hover:brightness-110 transition-all shadow-[0_15px_35px_rgba(0,228,204,0.3)] text-lg">
+           <button
+             onClick={() => signIn()}
+             className="w-full bg-primary text-background font-bold px-8 py-5 rounded-2xl hover:brightness-110 transition-all shadow-[0_15px_35px_rgba(0,228,204,0.3)] text-lg"
+           >
              Resume Session
            </button>
         </div>
       </div>
     );
   }
+
   return (
     <div className="h-screen flex bg-background text-white overflow-hidden font-sans">
       <div
@@ -367,11 +364,10 @@ export default function WorkspacePage() {
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          projectName={project?.name}
           onBack={() => navigate('/')}
-          onSignOut={() => window.puter.auth.signOut()}
+          onSignOut={signOut}
           onDeploy={handleDeploy}
-          user={user}
+          user={authUser}
         />
         <button
           onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
