@@ -1,6 +1,7 @@
-import { connectToSandbox } from "@codesandbox/sdk/browser";
+import { CodeSandbox } from "@codesandbox/sdk";
 import { getParameters } from 'codesandbox/lib/api/define';
 
+let sdk = null;
 let client = null;
 let sharedTerminal = null;
 let currentProjectId = null;
@@ -9,9 +10,22 @@ let apiToken = localStorage.getItem('csb_api_token');
 export function setApiToken(token) {
   apiToken = token;
   localStorage.setItem('csb_api_token', token);
+  // Re-initialize SDK if token changes
+  if (token) {
+    sdk = new CodeSandbox(token);
+  }
+}
+
+// Initialize SDK on load
+if (apiToken) {
+  sdk = new CodeSandbox(apiToken);
+} else {
+  // If no token, some operations might fail, but we'll try to use it for define
+  sdk = new CodeSandbox();
 }
 
 async function createSandboxViaDefine() {
+  console.log("[CSB] Defining sandbox via define API...");
   const parameters = getParameters({
     files: {
       'index.js': {
@@ -21,33 +35,47 @@ async function createSandboxViaDefine() {
       'package.json': {
         content: {
           name: "onyx-project",
-          dependencies: {},
+          main: "index.js",
+          dependencies: {
+            "vite": "latest",
+            "@vitejs/plugin-react": "latest",
+            "react": "latest",
+            "react-dom": "latest"
+          },
         },
       },
     },
   });
 
-  const response = await fetch('https://codesandbox.io/api/v1/sandboxes/define?json=1', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      parameters: parameters
-    }),
-  });
+  try {
+    const response = await fetch('https://codesandbox.io/api/v1/sandboxes/define?json=1', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        parameters: parameters
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error("Failed to define sandbox");
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Define API failed (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("[CSB] Sandbox defined with ID:", data.sandbox_id);
+    return data.sandbox_id;
+  } catch (err) {
+    console.error("[CSB] Error in createSandboxViaDefine:", err);
+    throw err;
   }
-
-  const data = await response.json();
-  return data.sandbox_id;
 }
 
 export async function getClient(projectId) {
   const pid = projectId || currentProjectId;
-  if (!pid) throw new Error("No Project ID specified for CodeSandbox client.");
+  if (!pid) throw new Error("No Project ID specified.");
 
   if (client && currentProjectId === pid) return client;
 
@@ -64,11 +92,16 @@ export async function getClient(projectId) {
     sessionStorage.setItem(`csb_sandbox_id_${pid}`, sbId);
   }
 
-  client = await connectToSandbox({
-    sandboxId: sbId,
-    token: apiToken
-  });
-  return client;
+  console.log("[CSB] Resuming and connecting to sandbox:", sbId);
+  try {
+    const sandbox = await sdk.sandboxes.resume(sbId);
+    client = await sandbox.connect();
+    console.log("[CSB] Connected to sandbox.");
+    return client;
+  } catch (err) {
+    console.error("[CSB] Failed to connect to sandbox:", err);
+    throw err;
+  }
 }
 
 export async function getTerminal(projectId) {
@@ -76,17 +109,30 @@ export async function getTerminal(projectId) {
   if (sharedTerminal && currentProjectId === pid) return sharedTerminal;
 
   const c = await getClient(pid);
+  console.log("[CSB] Creating terminal...");
   sharedTerminal = c.terminals.create();
+  // We await open() to ensure it's ready for onOutput listeners
   await sharedTerminal.open();
+  console.log("[CSB] Terminal opened.");
   return sharedTerminal;
 }
 
 export async function runCommand(command) {
+  console.log("[CSB] AI running command:", command);
   const terminal = await getTerminal();
-  // Use a more distinct echo for AI commands
+
+  // Explicitly write the command to the terminal for user visibility
   terminal.write(`\n\x1b[1;36m[ONYX AI] >> ${command}\x1b[0m\n`);
-  await terminal.run(command);
-  return "Command executed.";
+
+  try {
+    // Run the command
+    await terminal.run(command);
+    return "Command executed successfully.";
+  } catch (err) {
+    console.error("[CSB] Command failed:", err);
+    terminal.write(`\n\x1b[1;31m[ERROR] ${err.message}\x1b[0m\n`);
+    throw err;
+  }
 }
 
 export async function writeFile(path, content) {
@@ -114,6 +160,10 @@ export async function listFiles(path = "/") {
 export async function getPreview(port = 5173) {
   const sbId = sessionStorage.getItem(`csb_sandbox_id_${currentProjectId}`);
   if (!sbId) return null;
+  // Fallback to direct URL if client not ready
+  if (client) {
+     return client.hosts.getUrl(port);
+  }
   return `https://${sbId}.${port}.csb.app`;
 }
 

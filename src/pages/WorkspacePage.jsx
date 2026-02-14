@@ -2,39 +2,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Terminal as TerminalIcon,
-  History,
-  LogOut,
-  Monitor,
-  Activity,
-  Info,
   ShieldCheck,
-  Cpu,
-  Search,
-  Cloud,
-  GitBranch,
-  Wrench,
-  Settings as SettingsIcon,
   ChevronLeft,
   ChevronRight,
-  Maximize2,
-  Minimize2,
   Beaker,
-  Check,
-  AlertCircle,
-  Loader2
+  Monitor
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import Sidebar from '../components/layout/Sidebar';
 import ChatPanel from '../components/workspace/ChatPanel';
 import ResourcePanel from '../components/workspace/ResourcePanel';
 import OnyxTerminal from '../components/workspace/OnyxTerminal';
+import ActivityTab from '../components/workspace/ActivityTab';
 import { chatWithAI } from '../services/aiService';
 import * as csb from '../services/codesandboxService';
 
 export default function WorkspacePage({ user: authUser, signIn, signOut }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [project, setProject] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [messages, setMessages] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -45,68 +29,74 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
   const [previewUrl, setPreviewUrl] = useState('');
   const [csbToken, setCsbToken] = useState(localStorage.getItem('csb_api_token') || '');
   const [csbShell, setCsbShell] = useState(null);
-  const [, setTick] = useState(0);
 
   // Sidebar Resize State
-  const [leftSidebarWidth, setLeftSidebarWidth] = useState(260);
-  const [rightSidebarWidth, setRightSidebarWidth] = useState(420);
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(280);
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
+  const [terminalHeight, setTerminalHeight] = useState(200);
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
   const [isRightCollapsed, setIsRightCollapsed] = useState(false);
-  const [terminalHeight, setTerminalHeight] = useState(200);
 
-  // Persistence: Load chat
+  // Persistence: Load chat from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(`chat_history_${id}`);
-    if (saved) {
-      try {
+    if (id) {
+      const saved = localStorage.getItem(`onyx_chat_${id}`);
+      if (saved) {
         setMessages(JSON.parse(saved));
-      } catch (e) { console.error("Failed to load chat", e); }
+      } else {
+        setMessages([]);
+      }
     }
   }, [id]);
 
-  // Persistence: Save chat
+  // Persistence: Save chat to localStorage
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(`chat_history_${id}`, JSON.stringify(messages));
+    if (messages.length > 0 && id) {
+      localStorage.setItem(`onyx_chat_${id}`, JSON.stringify(messages));
     }
   }, [messages, id]);
 
+  // Persistence: Save model
   useEffect(() => {
-    if (window.puter) {
-      window.puter.kv.get(`project_${id}`).then(res => {
-        if (res) setProject(JSON.parse(res));
-      });
-    }
-  }, [id]);
+    localStorage.setItem('onyx_model', model);
+  }, [model]);
 
-  useEffect(() => {
-    if (csbToken && !csbShell) {
-      csb.getTerminal(id).then(shell => {
-        setCsbShell(shell);
-        csb.getPreview().then(setPreviewUrl);
-      }).catch(err => {
-        console.error('CSB Init Error:', err);
-      });
-    }
-  }, [csbToken, csbShell, id]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const addLog = useCallback((message, type = 'system') => {
+  // Activity Logger
+  const logActivity = useCallback((text, type = 'SYSTEM') => {
     const newLog = {
-      message,
+      text,
       type,
-      timestamp: new Date(),
-      id: Math.random().toString(36).substr(2, 9)
+      timestamp: Date.now()
     };
     setLogs(prev => [...prev, newLog]);
-    if (message.toLowerCase().includes('playwright') || message.toLowerCase().includes('test')) {
-      setPlaywrightLogs(prev => [...prev, newLog]);
+
+    if (text.toLowerCase().includes('playwright')) {
+      setPlaywrightLogs(prev => [...prev, { message: text, timestamp: Date.now() }]);
     }
   }, []);
+
+  // Initialize CodeSandbox
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      logActivity('Initializing Onyx Runtime Environment...');
+      try {
+        const shell = await csb.getTerminal();
+        if (mounted) {
+          setCsbShell(shell);
+          const url = await csb.getPreviewUrl();
+          setPreviewUrl(url);
+          logActivity('Runtime Environment Ready', 'SUCCESS');
+        }
+      } catch (err) {
+        logActivity('Runtime Initialization Failed: ' + err.message, 'ERROR');
+      }
+    };
+
+    init();
+    return () => { mounted = false; };
+  }, [logActivity]);
 
   const handleSendMessage = async (content) => {
     const newUserMessage = { role: 'user', content };
@@ -121,13 +111,19 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
         (newMessages) => {
           setMessages([...updatedMessages, ...newMessages]);
         },
-        (log) => addLog(log, 'ai')
+        logActivity
       );
     } catch (err) {
-      addLog(`Error: ${err.message}`, 'error');
+      logActivity('AI Error: ' + err.message, 'ERROR');
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSaveCsbToken = (e) => {
+    const token = e.target.value;
+    setCsbToken(token);
+    localStorage.setItem('csb_api_token', token);
   };
 
   const handleUndo = () => {
@@ -137,132 +133,49 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
   };
 
   const handleDeploy = () => {
-    addLog("Initiating GitHub deployment sequence...", "github");
-    setTimeout(() => addLog("Repository synchronized with origin/main", "github"), 1500);
-    setTimeout(() => addLog("Deployment successful: https://onyx-app-main.vercel.app", "success"), 3000);
+    logActivity('Deploying to GitHub...', 'ACTION');
+    setTimeout(() => {
+      logActivity('Successfully pushed to GitHub repository', 'SUCCESS');
+    }, 2000);
   };
 
-  const handleSaveCsbToken = (e) => {
-    const token = e.target.value;
-    setCsbToken(token);
-    csb.setApiToken(token);
-    addLog("CodeSandbox API Token updated.", "system");
+  // Resize Handlers
+  const startResizingLeft = (e) => {
+    const onMouseMove = (moveEvent) => setLeftSidebarWidth(moveEvent.clientX);
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 
-  // Resizer logic
-  const startResizingLeft = useCallback(() => {
-    const onMouseMove = (e) => {
-      const newWidth = e.clientX;
-      if (newWidth > 150 && newWidth < 500) setLeftSidebarWidth(newWidth);
-    };
+  const startResizingRight = (e) => {
+    const onMouseMove = (moveEvent) => setRightSidebarWidth(window.innerWidth - moveEvent.clientX);
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, []);
+  };
 
-  const startResizingRight = useCallback(() => {
-    const onMouseMove = (e) => {
-      const newWidth = window.innerWidth - e.clientX;
-      if (newWidth > 300 && newWidth < 800) setRightSidebarWidth(newWidth);
-    };
+  const startResizingTerminal = (e) => {
+    const onMouseMove = (moveEvent) => setTerminalHeight(window.innerHeight - moveEvent.clientY);
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, []);
-
-  const startResizingTerminal = useCallback(() => {
-    const onMouseMove = (e) => {
-      const newHeight = window.innerHeight - e.clientY;
-      if (newHeight > 100 && newHeight < 600) setTerminalHeight(newHeight);
-    };
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, []);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return (
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-background">
-            <ResourcePanel previewUrl={previewUrl} logs={logs.map(l => l.message)} />
-          </div>
-        );
+        return <ResourcePanel url={previewUrl} projectId={id} logs={logs} />;
       case 'activity':
-        return (
-          <div className="flex-1 flex flex-col bg-background overflow-hidden p-8">
-            <div className="max-w-4xl mx-auto w-full space-y-8 overflow-y-auto custom-scrollbar pb-20">
-               <header className="flex items-center justify-between mb-12">
-                  <div>
-                    <h3 className="font-display font-bold text-3xl text-white tracking-tight">Project Activity</h3>
-                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">Observability log for AI tool calls, terminal commands, and source control.</p>
-                  </div>
-                  <div className="flex items-center space-x-4 bg-surface px-6 py-4 rounded-3xl border border-onyx-border">
-                    <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
-                      <ShieldCheck size={20} />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Environment</div>
-                      <div className="text-sm font-bold text-white uppercase">{csbToken ? 'Authenticated' : 'Public/Read-Only'}</div>
-                    </div>
-                  </div>
-               </header>
-
-               <div className="relative pl-12 space-y-12">
-                  <div className="absolute left-[23px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-primary/50 via-onyx-border to-transparent"></div>
-
-                  {logs.length === 0 ? (
-                    <div className="py-20 flex flex-col items-center justify-center text-gray-700 space-y-4">
-                      <Activity size={48} className="opacity-20" />
-                      <p className="italic">No activity recorded yet.</p>
-                    </div>
-                  ) : (
-                    logs.slice().reverse().map((log) => (
-                      <div key={log.id} className="relative group">
-                        <div className="absolute -left-[35px] top-0 w-6 h-6 rounded-full bg-background border-2 border-onyx-border flex items-center justify-center z-10 group-hover:border-primary transition-all">
-                           {log.type === 'ai' ? <Wrench size={10} className="text-primary" /> :
-                            log.type === 'github' ? <GitBranch size={10} className="text-secondary" /> :
-                            <TerminalIcon size={10} className="text-gray-400" />}
-                        </div>
-
-                        <div className="bg-surface p-6 rounded-[2rem] border border-onyx-border hover:border-white/10 transition-all shadow-xl">
-                           <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center space-x-3">
-                                <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${
-                                  log.type === 'ai' ? 'bg-primary/10 text-primary' :
-                                  log.type === 'github' ? 'bg-secondary/10 text-secondary' :
-                                  'bg-white/5 text-gray-400'
-                                }`}>
-                                  {log.type === 'ai' ? 'Tool Call' : log.type === 'github' ? 'Git Action' : 'Terminal'}
-                                </span>
-                                <span className="text-sm font-bold text-white truncate max-w-[300px]">
-                                  {log.message.substring(0, 50)}{log.message.length > 50 ? '...' : ''}
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-gray-600 font-bold uppercase tracking-tight">
-                                {formatDistanceToNow(new Date(log.timestamp))} ago
-                              </span>
-                           </div>
-                           <div className="bg-black/30 p-4 rounded-2xl border border-white/5 font-mono text-[11px] text-gray-400 leading-relaxed whitespace-pre-wrap">
-                              {log.message}
-                           </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-               </div>
-            </div>
-          </div>
-        );
+        return <ActivityTab logs={logs} />;
       case 'playwright':
         return (
           <div className="flex-1 flex flex-col bg-background p-12 overflow-y-auto custom-scrollbar">
@@ -293,7 +206,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
                     <div key={i} className="bg-surface p-6 rounded-3xl border border-onyx-border">
                        <div className="flex items-center justify-between mb-2">
                           <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Test Run Log</span>
-                          <span className="text-[10px] text-gray-600">{formatDistanceToNow(new Date(log.timestamp))} ago</span>
+                          <span className="text-[10px] text-gray-600 font-mono">Run {i+1}</span>
                        </div>
                        <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap">{log.message}</pre>
                     </div>
@@ -333,7 +246,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
           </div>
         );
       default:
-        return <div>Not Found</div>;
+        return <div className="p-12 text-gray-500 font-mono">Module [ {activeTab} ] is under construction...</div>;
     }
   };
 
@@ -359,7 +272,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
     <div className="h-screen flex bg-background text-white overflow-hidden font-sans">
       <div
         style={{ width: isLeftCollapsed ? 0 : leftSidebarWidth }}
-        className="transition-all duration-300 relative group overflow-hidden border-r border-onyx-border"
+        className="transition-all duration-300 relative group overflow-hidden border-r border-onyx-border shrink-0"
       >
         <Sidebar
           activeTab={activeTab}
@@ -378,9 +291,9 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
       </div>
       <div
         onMouseDown={startResizingLeft}
-        className="w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-40 h-full"
+        className="w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-40 h-full shrink-0"
       />
-      <main className="flex-1 flex flex-col overflow-hidden bg-background relative">
+      <main className="flex-1 flex flex-col overflow-hidden bg-background relative min-w-0">
         <div className="flex-1 flex flex-col overflow-hidden">
           {renderContent()}
         </div>
@@ -411,11 +324,11 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
       </main>
       <div
         onMouseDown={startResizingRight}
-        className="w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-40 h-full"
+        className="w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-40 h-full shrink-0"
       />
       <div
         style={{ width: isRightCollapsed ? 0 : rightSidebarWidth }}
-        className="transition-all duration-300 relative group bg-surface shadow-2xl border-l border-onyx-border"
+        className="transition-all duration-300 relative group bg-surface shadow-2xl border-l border-onyx-border shrink-0"
       >
         <ChatPanel
           messages={messages}

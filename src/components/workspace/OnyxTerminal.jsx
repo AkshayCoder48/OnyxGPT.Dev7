@@ -1,28 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 export default function OnyxTerminal({ shell }) {
-  const [lines, setLines] = useState([{ text: 'Onyx Terminal v1.1 initialization...', type: 'system' }]);
+  const [lines, setLines] = useState([{ text: 'Onyx Terminal v1.2', type: 'system' }]);
   const [input, setInput] = useState('');
   const scrollRef = useRef(null);
   const disposerRef = useRef(null);
 
   useEffect(() => {
-    if (!shell) return;
+    if (!shell) {
+      setLines(prev => [...prev, { text: 'Waiting for terminal connection...', type: 'system' }]);
+      return;
+    }
 
     const init = async () => {
       try {
-        // The shell here is a CodeSandbox Terminal instance
-        // It might already be opened by getTerminal()
-
         if (disposerRef.current) disposerRef.current.dispose();
 
         disposerRef.current = shell.onOutput((data) => {
-          // Process ANSI/Terminal output slightly for better display in simple pre tags
-          // This is a simple terminal, not a full xterm
           setLines(prev => [...prev, { text: data, type: 'output' }]);
         });
 
-        setLines(prev => [...prev, { text: 'Terminal connected and ready.', type: 'system' }]);
+        setLines(prev => [...prev, { text: 'Terminal session established.', type: 'system' }]);
       } catch (err) {
         setLines(prev => [...prev, { text: 'Error: ' + err.message, type: 'error' }]);
       }
@@ -49,7 +47,6 @@ export default function OnyxTerminal({ shell }) {
     setInput('');
 
     try {
-      // For manual input, we use write()
       await shell.write(cmd + '\n');
     } catch (err) {
       setLines(prev => [...prev, { text: 'Failed to send: ' + err.message, type: 'error' }]);
@@ -57,8 +54,8 @@ export default function OnyxTerminal({ shell }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#050505] font-mono text-[11px] overflow-hidden">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-0.5">
+    <div className="flex flex-col h-full bg-[#050505] font-mono text-[11px] overflow-hidden group">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-0.5 scroll-smooth">
         {lines.map((line, i) => (
           <div key={i} className="flex items-start gap-2">
             {line.type === 'system' && <span className="text-amber-500 font-bold shrink-0">[SYS]</span>}
@@ -72,14 +69,15 @@ export default function OnyxTerminal({ shell }) {
             </pre>
           </div>
         ))}
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 border-t border-white/5 pt-2">
            <span className="text-primary font-bold shrink-0">onyx-app $</span>
            <form onSubmit={handleSubmit} className="flex-1">
              <input
                type="text"
                value={input}
                onChange={(e) => setInput(e.target.value)}
-               className="w-full bg-transparent outline-none border-none text-white caret-primary"
+               placeholder="Type a command..."
+               className="w-full bg-transparent outline-none border-none text-white caret-primary placeholder:text-gray-800"
                autoFocus
              />
            </form>
