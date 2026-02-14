@@ -81,7 +81,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
 
   useEffect(() => {
     if (csbToken && !csbShell) {
-      csb.getTerminal().then(shell => {
+      csb.getTerminal(id).then(shell => {
         setCsbShell(shell);
         csb.getPreview().then(setPreviewUrl);
       }).catch(err => {

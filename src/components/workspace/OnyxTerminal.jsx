@@ -1,30 +1,38 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Terminal as TerminalIcon, ChevronRight } from 'lucide-react';
 
 export default function OnyxTerminal({ shell }) {
-  const [lines, setLines] = useState([{ text: 'Onyx Terminal v1.0 connected...', type: 'system' }]);
+  const [lines, setLines] = useState([{ text: 'Onyx Terminal v1.1 initialization...', type: 'system' }]);
   const [input, setInput] = useState('');
   const scrollRef = useRef(null);
+  const disposerRef = useRef(null);
 
   useEffect(() => {
     if (!shell) return;
 
     const init = async () => {
       try {
-        const initialOutput = await shell.open();
-        if (initialOutput) {
-          setLines(prev => [...prev, { text: initialOutput, type: 'output' }]);
-        }
+        // The shell here is a CodeSandbox Terminal instance
+        // It might already be opened by getTerminal()
 
-        shell.onOutput((data) => {
+        if (disposerRef.current) disposerRef.current.dispose();
+
+        disposerRef.current = shell.onOutput((data) => {
+          // Process ANSI/Terminal output slightly for better display in simple pre tags
+          // This is a simple terminal, not a full xterm
           setLines(prev => [...prev, { text: data, type: 'output' }]);
         });
+
+        setLines(prev => [...prev, { text: 'Terminal connected and ready.', type: 'system' }]);
       } catch (err) {
         setLines(prev => [...prev, { text: 'Error: ' + err.message, type: 'error' }]);
       }
     };
 
     init();
+
+    return () => {
+      if (disposerRef.current) disposerRef.current.dispose();
+    };
   }, [shell]);
 
   useEffect(() => {
@@ -39,9 +47,9 @@ export default function OnyxTerminal({ shell }) {
 
     const cmd = input;
     setInput('');
-    setLines(prev => [...prev, { text: cmd, type: 'command' }]);
 
     try {
+      // For manual input, we use write()
       await shell.write(cmd + '\n');
     } catch (err) {
       setLines(prev => [...prev, { text: 'Failed to send: ' + err.message, type: 'error' }]);
@@ -50,23 +58,21 @@ export default function OnyxTerminal({ shell }) {
 
   return (
     <div className="flex flex-col h-full bg-[#050505] font-mono text-[11px] overflow-hidden">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-1">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-0.5">
         {lines.map((line, i) => (
-          <div key={i} className="flex items-start gap-2 animate-in fade-in duration-300">
-            {line.type === 'command' && <span className="text-primary font-bold shrink-0">onyx-app $</span>}
+          <div key={i} className="flex items-start gap-2">
             {line.type === 'system' && <span className="text-amber-500 font-bold shrink-0">[SYS]</span>}
             {line.type === 'error' && <span className="text-red-500 font-bold shrink-0">[ERR]</span>}
             <pre className={`whitespace-pre-wrap break-all ${
-              line.type === 'command' ? 'text-white' :
               line.type === 'error' ? 'text-red-400' :
               line.type === 'system' ? 'text-amber-200/50' :
-              'text-gray-400'
+              'text-gray-300'
             }`}>
               {line.text}
             </pre>
           </div>
         ))}
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-1">
            <span className="text-primary font-bold shrink-0">onyx-app $</span>
            <form onSubmit={handleSubmit} className="flex-1">
              <input
