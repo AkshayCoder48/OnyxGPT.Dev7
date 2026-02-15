@@ -29,6 +29,8 @@ Examples:
 export async function chatWithAI(messages, options, onUpdate, onLog) {
   if (!window.puter) return;
 
+  const projectId = options.projectId;
+
   const tools = [
     {
       type: "function",
@@ -135,19 +137,19 @@ export async function chatWithAI(messages, options, onUpdate, onLog) {
         try {
           if (toolCall.name === 'writeFile') {
             onLog(`onyx-app $ Updating file ${args.path}`);
-            await csb.writeFile(args.path, args.contents);
+            await csb.writeFile(args.path, args.contents, projectId);
             result = `File written to ${args.path}.`;
           } else if (toolCall.name === 'readFile') {
             onLog(`onyx-app $ Reading file ${args.path}`);
-            result = await csb.readFile(args.path);
+            result = await csb.readFile(args.path, projectId);
           } else if (toolCall.name === 'runCommand') {
             onLog(`onyx-app $ ${args.command}`);
-            const output = await csb.runCommand(args.command);
+            const output = await csb.runCommand(args.command, projectId);
             result = output || "Command executed successfully.";
           } else if (toolCall.name === 'runPlaywright') {
             const cmd = args.testPath ? `npx playwright test ${args.testPath}` : "npx playwright test";
             onLog(`onyx-app $ ${cmd}`);
-            const output = await csb.runCommand(cmd);
+            const output = await csb.runCommand(cmd, projectId);
             result = output || "Playwright tests completed.";
           }
         } catch (err) {

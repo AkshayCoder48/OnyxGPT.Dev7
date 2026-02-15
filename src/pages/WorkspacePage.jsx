@@ -37,6 +37,13 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
   const [isRightCollapsed, setIsRightCollapsed] = useState(false);
 
+  // Set project ID in service
+  useEffect(() => {
+    if (id) {
+      csb.setProjectId(id);
+    }
+  }, [id]);
+
   // Persistence: Load chat from localStorage
   useEffect(() => {
     if (id) {
@@ -80,7 +87,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
     let mounted = true;
 
     const init = async () => {
-      setCsbShell(null); // Reset shell state during re-init
+      setCsbShell(null);
       logActivity('Initializing Onyx Runtime Environment...');
       try {
         const shell = await csb.getTerminal(id);
@@ -93,20 +100,18 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
       } catch (err) {
         if (mounted) {
           logActivity('Runtime Initialization Failed: ' + err.message, 'ERROR');
-          // We don't set shell to null here if it was already set,
-          // but we set it to null at start of init.
         }
       }
     };
 
-    if (csbToken) {
+    if (csbToken && id) {
        init();
-    } else {
+    } else if (!csbToken) {
        logActivity('CodeSandbox API Token missing. Please visit Settings.', 'WARNING');
     }
 
     return () => { mounted = false; };
-  }, [logActivity, csbToken]);
+  }, [logActivity, csbToken, id]);
 
   const handleSendMessage = async (content) => {
     const newUserMessage = { role: 'user', content };
@@ -117,7 +122,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
     try {
       await chatWithAI(
         updatedMessages,
-        { model },
+        { model, projectId: id },
         (newMessages) => {
           setMessages([...updatedMessages, ...newMessages]);
         },
