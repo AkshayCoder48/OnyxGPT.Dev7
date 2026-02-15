@@ -1,35 +1,58 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 export default function OnyxTerminal({ shell }) {
-  const [lines, setLines] = useState([{ text: 'Onyx Terminal v1.2', type: 'system' }]);
+  const [lines, setLines] = useState([{ text: 'Onyx Terminal v1.4', type: 'system' }]);
   const [input, setInput] = useState('');
+  const [error, setError] = useState(null);
   const scrollRef = useRef(null);
-  const disposerRef = useRef(null);
+  const disposersRef = useRef([]);
 
   useEffect(() => {
     if (!shell) {
-      setLines(prev => [...prev, { text: 'Waiting for terminal connection...', type: 'system' }]);
+      if (lines.length === 0 || lines[lines.length - 1]?.text !== 'Waiting for terminal connection...') {
+         setLines(prev => [...prev, { text: 'Waiting for terminal connection...', type: 'system' }]);
+      }
       return;
     }
 
-    const init = async () => {
+    const setupOutput = () => {
       try {
-        if (disposerRef.current) disposerRef.current.dispose();
+        // Clear previous disposers
+        disposersRef.current.forEach(d => d.dispose && d.dispose());
+        disposersRef.current = [];
 
-        disposerRef.current = shell.onOutput((data) => {
-          setLines(prev => [...prev, { text: data, type: 'output' }]);
-        });
+        // Handle shell.onOutput (Standard interactive shell)
+        if (shell.onOutput) {
+          const d = shell.onOutput((data) => {
+            setLines(prev => [...prev, { text: data, type: 'output' }]);
+          });
+          disposersRef.current.push(d);
+        }
+        // Handle shell.stdout/stderr streams (Commands API)
+        else if (shell.stdout && shell.stderr) {
+          const d1 = shell.stdout.on('data', (data) => {
+             setLines(prev => [...prev, { text: data.toString(), type: 'output' }]);
+          });
+          const d2 = shell.stderr.on('data', (data) => {
+             setLines(prev => [...prev, { text: data.toString(), type: 'error' }]);
+          });
+          disposersRef.current.push({ dispose: () => { d1.dispose?.(); d2.dispose?.(); } });
+        } else {
+          throw new Error("Terminal interface not recognized (no onOutput or stdout).");
+        }
 
-        setLines(prev => [...prev, { text: 'Terminal session established.', type: 'system' }]);
+        setLines(prev => [...prev, { text: 'Terminal session synchronized.', type: 'system' }]);
+        setError(null);
       } catch (err) {
-        setLines(prev => [...prev, { text: 'Error: ' + err.message, type: 'error' }]);
+        setError(err.message);
+        setLines(prev => [...prev, { text: 'Terminal Binding Error: ' + err.message, type: 'error' }]);
       }
     };
 
-    init();
+    setupOutput();
 
     return () => {
-      if (disposerRef.current) disposerRef.current.dispose();
+      disposersRef.current.forEach(d => d.dispose && d.dispose());
     };
   }, [shell]);
 
@@ -41,15 +64,27 @@ export default function OnyxTerminal({ shell }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim() || !shell) return;
+    if (!input.trim()) return;
+
+    if (!shell) {
+      setLines(prev => [...prev, { text: 'Terminal disconnected.', type: 'error' }]);
+      return;
+    }
 
     const cmd = input;
     setInput('');
 
     try {
-      await shell.write(cmd + '\n');
+      // Standard shells have .write(), commands tasks have .stdin.write()
+      if (shell.write) {
+        await shell.write(cmd + '\n');
+      } else if (shell.stdin && shell.stdin.write) {
+        await shell.stdin.write(cmd + '\n');
+      } else {
+        throw new Error("Shell does not support input.");
+      }
     } catch (err) {
-      setLines(prev => [...prev, { text: 'Failed to send: ' + err.message, type: 'error' }]);
+      setLines(prev => [...prev, { text: 'Input Error: ' + err.message, type: 'error' }]);
     }
   };
 
@@ -69,19 +104,26 @@ export default function OnyxTerminal({ shell }) {
             </pre>
           </div>
         ))}
-        <div className="flex items-center gap-2 mt-1 border-t border-white/5 pt-2">
+
+        {error && (
+          <div className="mt-2 p-3 bg-red-950/30 border border-red-900/50 rounded text-red-400 text-[10px]">
+             {error}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 mt-2 border-t border-white/5 pt-2">
            <span className="text-primary font-bold shrink-0">onyx-app $</span>
            <form onSubmit={handleSubmit} className="flex-1">
              <input
                type="text"
                value={input}
                onChange={(e) => setInput(e.target.value)}
-               placeholder="Type a command..."
+               placeholder={shell ? "Run command..." : "Terminal Offline"}
                className="w-full bg-transparent outline-none border-none text-white caret-primary placeholder:text-gray-800"
+               disabled={!shell}
                autoFocus
              />
            </form>
-           <div className="w-1.5 h-3 bg-primary animate-pulse"></div>
         </div>
       </div>
     </div>

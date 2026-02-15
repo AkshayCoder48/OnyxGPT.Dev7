@@ -80,6 +80,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
     let mounted = true;
 
     const init = async () => {
+      setCsbShell(null); // Reset shell state during re-init
       logActivity('Initializing Onyx Runtime Environment...');
       try {
         const shell = await csb.getTerminal();
@@ -90,13 +91,22 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
           logActivity('Runtime Environment Ready', 'SUCCESS');
         }
       } catch (err) {
-        logActivity('Runtime Initialization Failed: ' + err.message, 'ERROR');
+        if (mounted) {
+          logActivity('Runtime Initialization Failed: ' + err.message, 'ERROR');
+          // We don't set shell to null here if it was already set,
+          // but we set it to null at start of init.
+        }
       }
     };
 
-    init();
+    if (csbToken) {
+       init();
+    } else {
+       logActivity('CodeSandbox API Token missing. Please visit Settings.', 'WARNING');
+    }
+
     return () => { mounted = false; };
-  }, [logActivity]);
+  }, [logActivity, csbToken]);
 
   const handleSendMessage = async (content) => {
     const newUserMessage = { role: 'user', content };
@@ -123,7 +133,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
   const handleSaveCsbToken = (e) => {
     const token = e.target.value;
     setCsbToken(token);
-    localStorage.setItem('csb_api_token', token);
+    csb.setApiToken(token);
   };
 
   const handleUndo = () => {
@@ -313,7 +323,7 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
               <div className="flex items-center space-x-3">
                 <span className="text-[9px] text-gray-700 font-mono tracking-tight flex items-center gap-1.5">
                   <span className={`w-1.5 h-1.5 rounded-full ${csbShell ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
-                  <span>{csbShell ? 'LIVE' : 'READ-ONLY'}</span>
+                  <span>{csbShell ? 'LIVE' : 'OFFLINE'}</span>
                 </span>
               </div>
            </div>

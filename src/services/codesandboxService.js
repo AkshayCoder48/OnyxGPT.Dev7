@@ -2,33 +2,32 @@ import { getParameters } from 'codesandbox/lib/api/define';
 
 let sdk = null;
 let client = null;
-let sharedTerminal = null;
+let sharedShell = null;
 let currentProjectId = null;
 let apiToken = localStorage.getItem('csb_api_token');
 
-// Lazy load SDK to avoid build-time 'module' issues if possible,
-// though Vite should handle it now.
 async function getSDK() {
   if (sdk) return sdk;
+  if (!apiToken) {
+    throw new Error("CodeSandbox API Token is missing. Please add it in Settings.");
+  }
   const { CodeSandbox } = await import("@codesandbox/sdk");
-  sdk = new CodeSandbox(apiToken || "");
+  sdk = new CodeSandbox(apiToken);
   return sdk;
 }
 
 export function setApiToken(token) {
   apiToken = token;
   localStorage.setItem('csb_api_token', token);
-  sdk = null; // Reset for lazy re-init
+  sdk = null;
+  client = null;
+  sharedShell = null;
 }
 
 async function createSandboxViaDefine() {
-  console.log("[CSB] Defining sandbox via define API...");
   const parameters = getParameters({
     files: {
-      'index.js': {
-        content: 'console.log("Onyx Project Booted");',
-        isBinary: false,
-      },
+      'index.js': { content: 'console.log("Onyx Project Booted");' },
       'package.json': {
         content: {
           name: "onyx-project",
@@ -51,21 +50,13 @@ async function createSandboxViaDefine() {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        parameters: parameters
-      }),
+      body: JSON.stringify({ parameters }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Define API failed (${response.status}): ${errorText}`);
-    }
-
+    if (!response.ok) throw new Error(`Define API failed (${response.status})`);
     const data = await response.json();
-    console.log("[CSB] Sandbox defined with ID:", data.sandbox_id);
     return data.sandbox_id;
   } catch (err) {
-    console.error("[CSB] Error in createSandboxViaDefine:", err);
     throw err;
   }
 }
@@ -78,54 +69,51 @@ export async function getClient(projectId) {
 
   if (currentProjectId !== pid) {
     client = null;
-    sharedTerminal = null;
+    sharedShell = null;
     currentProjectId = pid;
   }
 
   let sbId = sessionStorage.getItem(`csb_sandbox_id_${pid}`);
-
   if (!sbId) {
     sbId = await createSandboxViaDefine();
     sessionStorage.setItem(`csb_sandbox_id_${pid}`, sbId);
   }
 
-  console.log("[CSB] Resuming and connecting to sandbox:", sbId);
   try {
     const _sdk = await getSDK();
     const sandbox = await _sdk.sandboxes.resume(sbId);
     client = await sandbox.connect();
-    console.log("[CSB] Connected to sandbox.");
     return client;
   } catch (err) {
-    console.error("[CSB] Failed to connect to sandbox:", err);
     throw err;
   }
 }
 
 export async function getTerminal(projectId) {
   const pid = projectId || currentProjectId;
-  if (sharedTerminal && currentProjectId === pid) return sharedTerminal;
+  if (sharedShell && currentProjectId === pid) return sharedShell;
 
   const c = await getClient(pid);
-  console.log("[CSB] Creating terminal...");
-  sharedTerminal = c.terminals.create();
-  await sharedTerminal.open();
-  console.log("[CSB] Terminal opened.");
-  return sharedTerminal;
+
+  // Attempting to create a shell.
+  // Based on common patterns in CodeSandbox SDK:
+  if (c.shells) {
+    sharedShell = c.shells.create();
+    await sharedShell.open();
+  } else if (c.commands) {
+    sharedShell = await c.commands.run("bash");
+  } else {
+    throw new Error("Terminal support not found in SDK client.");
+  }
+
+  return sharedShell;
 }
 
 export async function runCommand(command) {
-  console.log("[CSB] AI running command:", command);
-  const terminal = await getTerminal();
-  terminal.write(`\n\x1b[1;36m[ONYX AI] >> ${command}\x1b[0m\n`);
-  try {
-    await terminal.run(command);
-    return "Command executed successfully.";
-  } catch (err) {
-    console.error("[CSB] Command failed:", err);
-    terminal.write(`\n\x1b[1;31m[ERROR] ${err.message}\x1b[0m\n`);
-    throw err;
-  }
+  const shell = await getTerminal();
+  // Write the command to the shared shell
+  await shell.write(`${command}\n`);
+  return "Command sent to terminal.";
 }
 
 export async function writeFile(path, content) {
@@ -141,22 +129,16 @@ export async function readFile(path) {
 export async function listFiles(path = "/") {
   const c = await getClient();
   if (!c) return [];
-  try {
-    const entries = await c.fs.readdir(path);
-    return entries;
-  } catch (err) {
-    console.error("Failed to list files:", err);
-    return [];
-  }
+  return await c.fs.readdir(path);
 }
 
 export async function getPreviewUrl(port = 5173) {
-  const sbId = sessionStorage.getItem(`csb_sandbox_id_${currentProjectId}`);
-  if (!sbId) return null;
-  if (client) {
-     return client.hosts.getUrl(port);
+  const c = await getClient();
+  if (c && c.hosts) {
+     return c.hosts.getUrl(port);
   }
-  return `https://${sbId}.${port}.csb.app`;
+  const sbId = sessionStorage.getItem(`csb_sandbox_id_${currentProjectId}`);
+  return sbId ? `https://${sbId}.${port}.csb.app` : null;
 }
 
 export function isReady() {
