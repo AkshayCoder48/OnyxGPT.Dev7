@@ -1,4 +1,3 @@
-import { CodeSandbox } from "@codesandbox/sdk";
 import { getParameters } from 'codesandbox/lib/api/define';
 
 let sdk = null;
@@ -7,21 +6,19 @@ let sharedTerminal = null;
 let currentProjectId = null;
 let apiToken = localStorage.getItem('csb_api_token');
 
+// Lazy load SDK to avoid build-time 'module' issues if possible,
+// though Vite should handle it now.
+async function getSDK() {
+  if (sdk) return sdk;
+  const { CodeSandbox } = await import("@codesandbox/sdk");
+  sdk = new CodeSandbox(apiToken || "");
+  return sdk;
+}
+
 export function setApiToken(token) {
   apiToken = token;
   localStorage.setItem('csb_api_token', token);
-  // Re-initialize SDK if token changes
-  if (token) {
-    sdk = new CodeSandbox(token);
-  }
-}
-
-// Initialize SDK on load
-if (apiToken) {
-  sdk = new CodeSandbox(apiToken);
-} else {
-  // If no token, some operations might fail, but we'll try to use it for define
-  sdk = new CodeSandbox();
+  sdk = null; // Reset for lazy re-init
 }
 
 async function createSandboxViaDefine() {
@@ -94,7 +91,8 @@ export async function getClient(projectId) {
 
   console.log("[CSB] Resuming and connecting to sandbox:", sbId);
   try {
-    const sandbox = await sdk.sandboxes.resume(sbId);
+    const _sdk = await getSDK();
+    const sandbox = await _sdk.sandboxes.resume(sbId);
     client = await sandbox.connect();
     console.log("[CSB] Connected to sandbox.");
     return client;
@@ -111,7 +109,6 @@ export async function getTerminal(projectId) {
   const c = await getClient(pid);
   console.log("[CSB] Creating terminal...");
   sharedTerminal = c.terminals.create();
-  // We await open() to ensure it's ready for onOutput listeners
   await sharedTerminal.open();
   console.log("[CSB] Terminal opened.");
   return sharedTerminal;
@@ -120,12 +117,8 @@ export async function getTerminal(projectId) {
 export async function runCommand(command) {
   console.log("[CSB] AI running command:", command);
   const terminal = await getTerminal();
-
-  // Explicitly write the command to the terminal for user visibility
   terminal.write(`\n\x1b[1;36m[ONYX AI] >> ${command}\x1b[0m\n`);
-
   try {
-    // Run the command
     await terminal.run(command);
     return "Command executed successfully.";
   } catch (err) {
@@ -160,7 +153,6 @@ export async function listFiles(path = "/") {
 export async function getPreviewUrl(port = 5173) {
   const sbId = sessionStorage.getItem(`csb_sandbox_id_${currentProjectId}`);
   if (!sbId) return null;
-  // Fallback to direct URL if client not ready
   if (client) {
      return client.hosts.getUrl(port);
   }

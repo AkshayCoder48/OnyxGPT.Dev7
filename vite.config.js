@@ -8,15 +8,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
-    {
-      name: 'resolve-module-polyfill',
-      enforce: 'pre',
-      resolveId(id) {
-        if (id === 'module' || id === 'node:module') {
-          return path.resolve(__dirname, './src/module-polyfill.js');
-        }
-      },
-    },
     react(),
     nodePolyfills({
       include: ['buffer', 'process', 'util', 'stream', 'events', 'path', 'fs'],
@@ -27,4 +18,10 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      'module': path.resolve(__dirname, './src/module-polyfill.js'),
+      'node:module': path.resolve(__dirname, './src/module-polyfill.js'),
+    }
+  }
 });
