@@ -83,10 +83,10 @@ export default function WorkspacePage({ user: authUser, signIn, signOut }) {
       setCsbShell(null); // Reset shell state during re-init
       logActivity('Initializing Onyx Runtime Environment...');
       try {
-        const shell = await csb.getTerminal();
+        const shell = await csb.getTerminal(id);
         if (mounted) {
           setCsbShell(shell);
-          const url = await csb.getPreviewUrl();
+          const url = await csb.getPreviewUrl(id);
           setPreviewUrl(url);
           logActivity('Runtime Environment Ready', 'SUCCESS');
         }

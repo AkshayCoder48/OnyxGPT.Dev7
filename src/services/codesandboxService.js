@@ -65,13 +65,14 @@ export async function getClient(projectId) {
   const pid = projectId || currentProjectId;
   if (!pid) throw new Error("No Project ID specified.");
 
-  if (client && currentProjectId === pid) return client;
-
-  if (currentProjectId !== pid) {
+  // Update current project ID if a new one is provided
+  if (projectId && currentProjectId !== projectId) {
     client = null;
     sharedShell = null;
-    currentProjectId = pid;
+    currentProjectId = projectId;
   }
+
+  if (client) return client;
 
   let sbId = sessionStorage.getItem(`csb_sandbox_id_${pid}`);
   if (!sbId) {
@@ -91,12 +92,10 @@ export async function getClient(projectId) {
 
 export async function getTerminal(projectId) {
   const pid = projectId || currentProjectId;
-  if (sharedShell && currentProjectId === pid) return sharedShell;
-
   const c = await getClient(pid);
 
-  // Attempting to create a shell.
-  // Based on common patterns in CodeSandbox SDK:
+  if (sharedShell) return sharedShell;
+
   if (c.shells) {
     sharedShell = c.shells.create();
     await sharedShell.open();
@@ -111,7 +110,6 @@ export async function getTerminal(projectId) {
 
 export async function runCommand(command) {
   const shell = await getTerminal();
-  // Write the command to the shared shell
   await shell.write(`${command}\n`);
   return "Command sent to terminal.";
 }
