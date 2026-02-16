@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 export function useAuth() {
+  useEffect(() => {
+    if (window.puter) console.log('Puter.js loaded');
+    else console.warn('Puter.js NOT loaded');
+  }, []);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const listenersRef = useRef([]);

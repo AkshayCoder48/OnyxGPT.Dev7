@@ -10,14 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codesandbox/sdk": "^2.4.2",
     "@tailwindcss/postcss": "^4.1.18",
-    "@webcontainer/api": "^1.6.1",
+    "codesandbox": "^2.2.3",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.13.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "vite-plugin-node-polyfills": "^0.25.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
